@@ -1,0 +1,27 @@
+body {
+   padding:0;
+   margin:0;
+    box-sizing: border-box;
+}
+
+  html, body {
+      height: 100%;
+      margin: 0;
+    }
+main{
+  width: 80%;
+  height: 100vh;
+}
+   .avatar-container {
+            text-align: center;
+        }
+        .avatar-container img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+        }
+        .form-container {
+            max-width: 900px;
+            margin: auto;
+        }
