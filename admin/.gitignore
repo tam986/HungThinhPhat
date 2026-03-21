@@ -4,7 +4,7 @@
 /.env.backup
 /.env.production
 /.phpunit.result.cache
-/public/build
+# /public/build
 /public/hot
 /public/storage
 /storage/*.key
