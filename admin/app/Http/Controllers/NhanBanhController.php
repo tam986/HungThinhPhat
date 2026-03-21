@@ -6,6 +6,8 @@ use App\Models\BienThe;
 use App\Models\Nhanbanh;
 use Illuminate\Http\Request;
 
+use Inertia\Inertia;
+
 class NhanBanhController extends Controller
 {
   private function getSortNB($query, Request $request)
@@ -29,13 +31,7 @@ class NhanBanhController extends Controller
 
     $this->getSortNB($query, $request);
 
-    $nhanbanhs = $query->paginate($perPage)->appends($request->only([
-      'search',
-      'sort',
-      'per_page',
-    ]));
-
-    $totalNhanBanh = $nhanbanhs->total();
+    $nhanbanhs = $query->paginate($perPage)->withQueryString();
 
     $btCount = BienThe::selectRaw('id_nhanbanh, COUNT(*) as total')
       ->groupBy('id_nhanbanh')
@@ -46,12 +42,15 @@ class NhanBanhController extends Controller
       $nb->bienthe_count = $btCount[$nb->id] ?? 0;
     }
 
-    return view('Nhanbanh', compact('nhanbanhs', 'totalNhanBanh'));
+    return Inertia::render('Fillings/Index', [
+      'fillings' => $nhanbanhs,
+      'filters' => $request->only(['search', 'sort', 'per_page'])
+    ]);
   }
 
   public function create()
   {
-    return view('NhanBanh.Create');
+    return Inertia::render('Fillings/Create');
   }
 
   public function store(Request $request)
@@ -71,7 +70,7 @@ class NhanBanhController extends Controller
   public function edit($id)
   {
     $nhanbanh = NhanBanh::findOrFail($id);
-    return view('NhanBanh.Update', compact('nhanbanh'));
+    return Inertia::render('Fillings/Edit', ['filling' => $nhanbanh]);
   }
 
   public function update(Request $request, $id)
@@ -102,6 +101,6 @@ class NhanBanhController extends Controller
     $nhanbanh->delete();
 
     return redirect()->route('nhanbanh.index')
-      ->with('success', 'Nhân bánh đã được xóa thành công.');
+      ->with('success', 'Nhân bánh đã được xóa thành công!');
   }
 }

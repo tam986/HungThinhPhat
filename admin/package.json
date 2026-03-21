@@ -7,10 +7,32 @@
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@types/node": "^25.4.0",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^5.1.4",
         "axios": "^1.7.4",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^1.2.0",
         "tailwindcss": "^4.0.0",
         "vite": "^6.0.11"
+    },
+    "dependencies": {
+        "@inertiajs/react": "^2.3.17",
+        "@tiptap/extension-image": "^3.20.4",
+        "@tiptap/extension-link": "^3.20.4",
+        "@tiptap/pm": "^3.20.4",
+        "@tiptap/react": "^3.20.4",
+        "@tiptap/starter-kit": "^3.20.4",
+        "clsx": "^2.1.1",
+        "iconv-lite": "^0.7.2",
+        "laravel-echo": "^2.3.1",
+        "lucide-react": "^0.577.0",
+        "pusher-js": "^8.4.0",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+        "recharts": "^3.8.0",
+        "sonner": "^2.0.7",
+        "tailwind-merge": "^3.5.0"
     }
 }

@@ -10,17 +10,21 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
+use Inertia\Inertia;
+
 class BaivietController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Baiviet::query();
+        $query = Baiviet::with(['user', 'danhmucbaiviet']);
 
         if ($request->has('search') && $request->search != '') {
-            $query->where('tieude', 'like', '%' . $request->search . '%')
-                ->orWhereHas('user', function ($q2) use ($request) {
-                    $q2->where('hoten', 'like', '%' . $request->search . '%');
-                });
+            $query->where(function($q) use ($request) {
+                $q->where('tieude', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('user', function ($q2) use ($request) {
+                      $q2->where('hoten', 'like', '%' . $request->search . '%');
+                  });
+            });
         }
 
         if ($request->has('category') && $request->category != '') {
@@ -43,87 +47,99 @@ class BaivietController extends Controller
             $query->orderBy('id', 'desc');
         }
 
-        $baiViets = $query->paginate(10);
+        $baiViets = $query->paginate(10)->withQueryString();
+
+        $baiViets->getCollection()->transform(function ($post) {
+            $post->anhdaidien_url = $post->anhdaidien ? Storage::url($post->anhdaidien) : null;
+            return $post;
+        });
 
         $danhMucBaiViet = DanhMucBaiViet::all();
 
-        $user = User::all();
-        return view('BaiViet', compact('baiViets', 'danhMucBaiViet', 'user'));
+        return Inertia::render('Posts/Index', [
+            'posts' => $baiViets,
+            'categories' => $danhMucBaiViet,
+            'filters' => $request->only(['search', 'category', 'status', 'sort'])
+        ]);
     }
 
-    public function trashed()
+    public function trashed(Request $request)
     {
-        $deletedPost = Baiviet::onlyTrashed()->get();
-        return view('AdminPost.TrashedPost', compact('deletedPost'));
+        $query = Baiviet::onlyTrashed()->with(['user', 'danhmucbaiviet']);
+        
+        if ($request->has('search') && $request->search != '') {
+            $query->where('tieude', 'like', '%' . $request->search . '%');
+        }
+
+        $deletedPosts = $query->paginate(10);
+        $deletedPosts->getCollection()->transform(function ($post) {
+            $post->anhdaidien_url = $post->anhdaidien ? Storage::url($post->anhdaidien) : null;
+            return $post;
+        });
+
+        return Inertia::render('Posts/Trashed', [
+            'posts' => $deletedPosts,
+            'filters' => $request->only(['search'])
+        ]);
     }
+
     public function create()
     {
-        $danhMucBaiViet = DanhMucBaiViet::all();
-        return view('AdminPost.Create', compact('danhMucBaiViet'));
+        $categories = DanhMucBaiViet::all();
+        return Inertia::render('Posts/Create', ['categories' => $categories]);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'tieude' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255|unique:baiviets,slug',
             'seotieude' => 'nullable|string|max:255',
             'motangan' => 'nullable|string',
             'noidung' => 'required|string',
-            'anhdaidien' => 'nullable|image|mimes:jpeg,png,jpg,gif',
+            'anhdaidien' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:5120',
             'id_danhmuc' => 'required|exists:danh_muc_bai_viet,id',
-            'anhien' => 'required|boolean',
+            'anhien' => 'required|in:0,1',
         ]);
 
-        $anhdaidien_path = null; // Khởi tạo đường dẫn là null
-            if ($request->hasFile('anhdaidien')) {
-                $file = $request->file('anhdaidien');
-                $originalFileName = $file->getClientOriginalName();
-                $directory = 'uploads/posts'; // <-- Sửa thành đúng thư mục này
-                $disk = 'public';
-        
-                // Lưu file vào đúng thư mục với tên gốc
-                $anhdaidien_path = $file->storeAs($directory, $originalFileName, $disk);
-            }
+        if ($request->hasFile('anhdaidien')) {
+            $validated['anhdaidien'] = $request->file('anhdaidien')->store('uploads/posts', 'public');
+        }
 
-
-        Baiviet::create([
-            'tieude' => $request->tieude,
-            'slug' => $request->slug,
-            'seotieude' => $request->seotieude,
-            'motangan' => $request->motangan,
-            'noidung' => $request->noidung,
-            'anhdaidien' => $anhdaidien_path,
-            'id_danhmuc' => $request->id_danhmuc,
-            'id_user' => Auth::id(),
-            'anhien' => $request->anhien
-
-        ]);
+        $validated['id_user'] = Auth::id();
+        Baiviet::create($validated);
 
         return redirect()->route('baiviet.index')->with('success', 'Bài viết đã được tạo thành công.');
     }
 
     public function show($id)
     {
-        $baiViet = Baiviet::with('danhmucbaiviet')->findOrFail($id);
-        return view('AdminPost.Detail', compact('baiViet'));
+        $post = Baiviet::with(['user', 'danhmucbaiviet'])->findOrFail($id);
+        $post->anhdaidien_url = $post->anhdaidien ? Storage::url($post->anhdaidien) : null;
+        return Inertia::render('Posts/Detail', ['post' => $post]);
     }
 
     public function edit($id)
     {
-        $baiViet = Baiviet::findOrFail($id);
-        $danhMucBaiViet = DanhMucBaiViet::all();
-        return view('AdminPost.Update', compact('baiViet', 'danhMucBaiViet'));
+        $post = Baiviet::findOrFail($id);
+        $post->anhdaidien_url = $post->anhdaidien ? Storage::url($post->anhdaidien) : null;
+        $categories = DanhMucBaiViet::all();
+        return Inertia::render('Posts/Edit', [
+            'post' => $post,
+            'categories' => $categories
+        ]);
     }
 
     public function update(Request $request, $id)
     {
+        $post = Baiviet::findOrFail($id);
+        
         $validated = $request->validate([
             'tieude' => 'required|string|max:255',
             'motangan' => 'nullable|string',
             'noidung' => 'required|string',
-            'anhdaidien' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'seotieude' => 'required|string',
+            'anhdaidien' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:5120',
+            'seotieude' => 'nullable|string|max:255',
             'slug' => [
                 'nullable',
                 'string',
@@ -131,60 +147,44 @@ class BaivietController extends Controller
                 Rule::unique('baiviets', 'slug')->ignore($id)->whereNull('deleted_at'),
             ],
             'id_danhmuc' => 'required|exists:danh_muc_bai_viet,id',
-            'anhien' => 'required|boolean',
-
+            'anhien' => 'required|in:0,1',
         ]);
-        $baiViet = BaiViet::findOrFail($id);
 
         if ($request->hasFile('anhdaidien')) {
-        $file = $request->file('anhdaidien');
-        $originalFileName = $file->getClientOriginalName();
-        $directory = 'uploads/posts';
-        $disk = 'public';
-        $path = $file->storeAs($directory, $originalFileName, $disk);
-        $validated['anhdaidien'] = $path;
-    
-        } else {
-             $validated['anhdaidien'] = $baiViet->anhdaidien; 
+            if ($post->anhdaidien) {
+                Storage::disk('public')->delete($post->anhdaidien);
+            }
+            $validated['anhdaidien'] = $request->file('anhdaidien')->store('uploads/posts', 'public');
         }
-        $baiViet->update([
-            'tieude' => $validated['tieude'],
-            'motangan' => $validated['motangan'],
-            'noidung' => $validated['noidung'],
-            'anhdaidien' => $validated['anhdaidien'],
-            'seotieude' => $validated['seotieude'],
-            'slug' => $validated['slug'],
-            'id_danhmuc' => $validated['id_danhmuc'],
-            'anhien' => $validated['anhien'],
 
-            'id_user' => Auth::id(),
-        ]);
+        $validated['id_user'] = Auth::id();
+        $post->update($validated);
 
         return redirect()->route('baiviet.index')->with('success', 'Cập nhật bài viết thành công');
     }
 
     public function softDelete($id)
     {
-        $baiviet = BaiViet::findOrFail($id);
-        $baiviet->delete();
-
-        return redirect()->back()->with('success', 'Đã xóa mềm bài viết thành công.');
+        $post = Baiviet::findOrFail($id);
+        $post->delete();
+        return redirect()->route('baiviet.index')->with('success', 'Đã chuyển bài viết vào thùng rác.');
     }
 
     public function restore($id)
     {
-        $baiviet = BaiViet::withTrashed()->findOrFail($id);
-        $baiviet->restore();
-
-        return redirect()->back()->with('success', 'Đã khôi phục bài viết thành công.');
+        $post = Baiviet::withTrashed()->findOrFail($id);
+        $post->restore();
+        return redirect()->route('baiviet.trashed')->with('success', 'Đã khôi phục bài viết.');
     }
 
     public function forceDelete($id)
     {
-        $baiviet = BaiViet::withTrashed()->findOrFail($id);
-        $baiviet->forceDelete();
-
-        return redirect()->back()->with('success', 'Đã xóa vĩnh viễn bài viết.');
+        $post = Baiviet::withTrashed()->findOrFail($id);
+        if ($post->anhdaidien) {
+            Storage::disk('public')->delete($post->anhdaidien);
+        }
+        $post->forceDelete();
+        return redirect()->route('baiviet.trashed')->with('success', 'Đã xóa vĩnh viễn bài viết.');
     }
 
 

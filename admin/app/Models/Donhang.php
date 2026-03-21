@@ -12,8 +12,8 @@ class Donhang extends Model
     protected $primaryKey = 'id';
     public $timestamps = true;
     protected $fillable = [
-    'id_user','phone','tennguoinhan','tongtien','sotiengiam','thanhtien','email','diachi','tienvc','trangthai','id_giamgia','ghichu']
-;
+        'id_user', 'phone', 'tennguoinhan', 'tongtien', 'sotiengiam', 'thanhtien', 'email', 'diachi', 'tienvc', 'trangthai', 'id_giamgia', 'ghichu', 'transfer_proof', 'ma_donhang'
+    ];
     public function donhangchitiet()
     {
         return $this->hasMany(DonHangChiTiet::class, 'id_donhang', 'id');

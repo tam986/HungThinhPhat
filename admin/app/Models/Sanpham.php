@@ -16,10 +16,17 @@ class Sanpham extends Model
         'tensp',
         'id_danhmuc',
         'id_nhacungcap',
-        'img',
         'luotxem',
         'anhien',
         'mota',
+        'is_featured',
+        'is_new',
+    ];
+
+    protected $casts = [
+        'anhien' => 'boolean',
+        'is_featured' => 'boolean',
+        'is_new' => 'boolean',
     ];
     public $timestamps = true;
     public function danhmuc()
@@ -43,5 +50,10 @@ class Sanpham extends Model
     public function getBientheSumSoluong()
     {
         return $this->bienthe->sum('soluong');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('anhien', 1);
     }
 }

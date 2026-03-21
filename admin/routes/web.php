@@ -3,13 +3,14 @@
 use App\Http\Controllers\AdminDMController;
 use App\Http\Controllers\AdminSPController;
 use App\Http\Controllers\AdminUserController;
-use App\Http\Controllers\AdminThongKeController;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BaivietController;
 use App\Http\Controllers\BinhLuanController;
 use App\Http\Controllers\DanhMucBaiVietController;
 use App\Http\Controllers\DashBoardController;
 use App\Http\Controllers\DonHangController;
+use App\Http\Controllers\LoaiBanhController;
 use App\Http\Controllers\KhoiLuongController;
 use App\Http\Controllers\MaGiamGiaController;
 use App\Http\Controllers\NhaCungCapController;
@@ -25,6 +26,16 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('/login', 'index')->name('login.show');
     Route::post('/login', 'loginActive')->name('login.active');
     Route::post('/logout', 'logout')->name('logout');
+
+    // Forgot Password Routes
+    Route::get('/forgot-password', 'showForgotPasswordForm')->name('password.request');
+    Route::post('/forgot-password', 'sendResetLinkEmail')->name('password.email');
+    Route::get('/reset-password/{token}', 'showResetPasswordForm')->name('password.reset');
+    Route::post('/reset-password', 'resetPassword')->name('password.update');
+
+    // Temporary Registration Routes
+    Route::get('/register-temp', 'showRegistrationForm')->name('register.temp.show');
+    Route::post('/register-temp', 'register')->name('register.temp.active');
 });
 
 Route::middleware(['auth.admin'])->group(function () {
@@ -76,7 +87,7 @@ Route::middleware(['auth.admin'])->group(function () {
     Route::controller(BinhLuanController::class)->group(function () {
         Route::get('/binhluan', 'index')->name('binhluans.index');
         Route::post('/binhluan/{id}/duyet',  'duyet')->name('binhluan.duyet');
-        Route::put('/binhluan/{id}/tuchoi',  'an')->name('binhluan.an');
+        Route::put('/binhluan/{id}/tuchoi',  'tuchoi')->name('binhluan.an');
         Route::put('/binhluan/{id}/unactive', 'unactive')->name('binhluan.unactive');
         Route::put('/binhluan/{id}/active', 'active')->name('binhluan.active');
     });
@@ -91,7 +102,16 @@ Route::middleware(['auth.admin'])->group(function () {
         Route::get('/sanpham/{id}/edit', 'edit')->name('sanpham.edit');
         Route::put('/sanpham/{id}', 'update')->name('sanpham.update');
         Route::get('/sanpham/{id}/detail', 'detail')->name('sanpham.detail');
+        
+        // Variant management routes
+        Route::post('/sanpham/{id}/variant', 'storeVariant')->name('sanpham.variant.store');
+        Route::post('/sanpham/{id}/variants-bulk', 'storeBulkVariants')->name('sanpham.variants.bulk');
+        Route::put('/sanpham/variant/{id}', 'updateVariant')->name('sanpham.variant.update');
+        Route::delete('/sanpham/variant/{id}', 'destroyVariant')->name('sanpham.variant.destroy');
+
         Route::put('/sanpham/{id}/status', 'updateStatus')->name('sanpham.updateStatus');
+        Route::put('/sanpham/{id}/toggle-featured', 'toggleFeatured')->name('sanpham.toggleFeatured');
+        Route::put('/sanpham/{id}/toggle-new', 'toggleNew')->name('sanpham.toggleNew');
         Route::delete('/sanpham/{id}', 'softDelete')->name('sanpham.softDelete');
         Route::get('/sanpham/trashed', 'trashed')->name('sanpham.trashed');
         Route::post('/sanpham/restore/{id}', 'restore')->name('sanpham.restore');
@@ -107,6 +127,7 @@ Route::middleware(['auth.admin'])->group(function () {
         Route::get('/danhmuc/{id}/detail', 'detail')->name('danhmucDM.detail');
         Route::get('/danhmuc/{id}/edit', 'edit')->name('danhmucDM.edit');
         Route::put('/danhmuc/{id}', 'update')->name('danhmucDM.update');
+        Route::patch('/danhmuc/{id}/toggle-status', 'toggleStatus')->name('danhmucDM.toggleStatus');
         Route::delete('/danhmuc/{id}', 'destroy')->name('danhmucDM.destroy');
     });
     Route::controller(NhaCungCapController::class)->group(function () {
@@ -119,6 +140,7 @@ Route::middleware(['auth.admin'])->group(function () {
         Route::get('/nhacungcap/{id}/detail', 'detail')->name('nhacungcap.detail');
         Route::get('/nhacungcap/{id}/edit', 'edit')->name('nhacungcap.edit');
         Route::put('/nhacungcap/{id}', 'update')->name('nhacungcap.update');
+        Route::patch('/nhacungcap/{id}/toggle-status', 'toggleStatus')->name('nhacungcap.toggleStatus');
         Route::delete('/nhacungcap/{id}', 'destroy')->name('nhacungcap.destroy');
     });
     Route::controller(KhoiLuongController::class)->group(function () {
@@ -138,10 +160,19 @@ Route::middleware(['auth.admin'])->group(function () {
         Route::delete('/nhanbanh/{id}',  'destroy')->name('nhanbanh.destroy');
     });
     
+    Route::controller(LoaiBanhController::class)->group(function () {
+        Route::get('/loaibanh', 'index')->name('loaibanh.index');
+        Route::get('/loaibanh/create', 'create')->name('loaibanh.create');
+        Route::post('/loaibanh/store', 'store')->name('loaibanh.store');
+        Route::get('/loaibanh/{id}/edit', 'edit')->name('loaibanh.edit');
+        Route::put('/loaibanh/{id}', 'update')->name('loaibanh.update');
+        Route::delete('/loaibanh/{id}', 'destroy')->name('loaibanh.destroy');
+    });
+    
     //Đơn hàng
     Route::controller(DonHangController::class)->group(function () {
         Route::get('/donhang', 'index')->name('donhang.index');
-        Route::get('/donhang/filter', '')->name('donhang.date');
+        Route::get('/donhang/filter', 'filter')->name('donhang.date');
         Route::get('/donhang/show/{id}', 'show')->name('donhang.show');
         Route::get('/donhang/create', 'create')->name('donhang.create');
         Route::post('/donhang/created',  'store')->name('donhang.store');
@@ -169,7 +200,25 @@ Route::middleware(['auth.admin'])->group(function () {
             ->with('khoiluong', 'nhanbanh')
             ->get();
     });
-    Route::controller(AdminThongKeController::class)->group(function () {
-        Route::get('/thongke', 'index')->name('thongke.index');
+
+
+    // Banner
+    Route::controller(\App\Http\Controllers\AdminBannerController::class)->group(function () {
+        Route::get('/banners', 'index')->name('banners.index');
+        Route::get('/banners/create', 'create')->name('banners.create');
+        Route::post('/banners', 'store')->name('banners.store');
+        Route::get('/banners/{id}/edit', 'edit')->name('banners.edit');
+        Route::put('/banners/{id}', 'update')->name('banners.update');
+        Route::delete('/banners/{id}', 'destroy')->name('banners.destroy');
+        Route::post('/banners/active/{id}', 'active')->name('banners.active');
+    Route::post('/banners/unactive/{id}', 'unactive')->name('banners.unactive');
+    });
+
+    // Cấu hình
+    Route::controller(\App\Http\Controllers\AdminSettingController::class)->group(function () {
+        Route::get('/settings', 'index')->name('settings.index');
+        Route::post('/settings', 'update')->name('settings.update');
     });
 });
+
+// The Public API routes for Next.js Client have been moved to routes/api.php

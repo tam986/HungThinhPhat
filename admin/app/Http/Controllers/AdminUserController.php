@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 
+use Inertia\Inertia;
+
 class AdminUserController extends Controller
 {
 
@@ -32,14 +34,21 @@ class AdminUserController extends Controller
             $query->where('quyen', $role);
         }
         $users = $query->paginate(10);
-        return view('User', compact('users'));
+        
+        $users->getCollection()->transform(function ($user) {
+            $user->hinh_url = $user->hinh ? Storage::url($user->hinh) : null;
+            return $user;
+        });
+
+        return Inertia::render('Users/Index', [
+            'users' => $users,
+            'filters' => $request->only(['search', 'sort', 'role'])
+        ]);
     }
     public function create()
     {
-        return view('User.Create');
+        return Inertia::render('Users/Create');
     }
-
-
 
     public function store(Request $request)
     {
@@ -49,7 +58,7 @@ class AdminUserController extends Controller
             'password' => 'required|string|min:6',
             'sodienthoai' => 'required|digits_between:9,11|numeric',
             'diachi' => 'nullable|string',
-            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
             'gioitinh' => 'nullable|integer',
             'quyen' => 'nullable|integer',
         ]);
@@ -61,34 +70,31 @@ class AdminUserController extends Controller
         $validatedData['password'] = bcrypt($validatedData['password']);
         User::create($validatedData);
 
-        flash()->success('Người dùng đã được tạo thành công!', ['timeout' => 2000]);
-
-        return redirect()->route('user.index');
+        return redirect()->route('user.index')->with('success', 'Người dùng đã được tạo thành công!');
     }
 
-
-
-
-    public function show(string $id)
+    public function detail(string $id)
     {
         $user = User::findOrFail($id);
-        return view('User.Detail', compact('user'));
+        $user->hinh_url = $user->hinh ? Storage::url($user->hinh) : null;
+        return Inertia::render('Users/Detail', ['user' => $user]);
     }
 
     public function edit(string $id)
     {
-        $user = User::find($id);
-        return view('User.Update', compact('user'));
+        $user = User::findOrFail($id);
+        $user->hinh_url = $user->hinh ? Storage::url($user->hinh) : null;
+        return Inertia::render('Users/Edit', ['user' => $user]);
     }
 
     public function update(Request $request, string $id)
     {
         $validatedData = $request->validate([
             'hoten' => 'nullable|string',
-            'email' => 'nullable|email',
+            'email' => 'nullable|email|unique:users,email,' . $id,
             'sodienthoai' => 'nullable|string|max:11',
             'diachi' => 'nullable|string',
-            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
             'gioitinh' => 'nullable|integer',
             'quyen' => 'nullable|integer',
         ]);
@@ -102,40 +108,42 @@ class AdminUserController extends Controller
         $user->quyen = $validatedData['quyen'] ?? $user->quyen;
         $user->gioitinh = $validatedData['gioitinh'] ?? $user->gioitinh;
 
-
-
-        $imagePath = null;
         if ($request->hasFile('hinh')) {
-            $imagePath = $request->file('hinh')->store('uploads/img-user', 'public');
-            $validatedData['hinh'] = $imagePath;
-            $user->hinh = $imagePath;
+             if ($user->hinh) {
+                Storage::disk('public')->delete($user->hinh);
+            }
+            $user->hinh = $request->file('hinh')->store('uploads/img-user', 'public');
         }
+        
         $user->save();
-        return redirect()->route('user.detail', $id)->with('success', 'Sửa người dùng thành công');
+        return redirect()->route('user.detail', $id)->with('success', 'Cập nhật người dùng thành công');
     }
+
     public function updateRole(Request $request, $id)
     {
         $user = User::findOrFail($id);
-
         $validated = $request->validate([
             'quyen' => 'required|in:0,1'
         ]);
 
         $user->update(['quyen' => $validated['quyen']]);
-        flash()->success('Người dùng đã được tạo thành công!', ['timeout' => 2000]);
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Cập nhật vai trò thành công!');
     }
 
     public function destroy(string $id)
     {
-
-        User::destroy($id);
-
-        return redirect()->route('user.index')->with('success', 'Người dùng đã bị xóa vĩnh viễn.');
+        $user = User::findOrFail($id);
+        if ($user->hinh) {
+            Storage::disk('public')->delete($user->hinh);
+        }
+        $user->delete();
+        return redirect()->route('user.index')->with('success', 'Người dùng đã bị xóa.');
     }
+
     public function profileUser($id)
     {
         $user = Auth::user();
-        return view('Profile', compact('user'));
+        $user->hinh_url = $user->hinh ? Storage::url($user->hinh) : null;
+        return Inertia::render('Profile', ['user' => $user]);
     }
 }

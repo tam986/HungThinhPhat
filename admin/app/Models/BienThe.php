@@ -19,7 +19,8 @@ class BienThe extends Model
         'slug',
         'gia',
         'giakm',
-        'anhien'
+        'anhien',
+        'id_loaibanh'
     ];
     public function sanpham()
     {
@@ -35,6 +36,11 @@ class BienThe extends Model
     {
         return $this->belongsTo(Nhanbanh::class, 'id_nhanbanh', 'id');
     }
+
+    public function loaibanh()
+    {
+        return $this->belongsTo(LoaiBanh::class, 'id_loaibanh', 'id');
+    }
     public function donhangchitiet()
     {
         return $this->hasMany(DonHangChiTiet::class, 'id_bienthe', 'id');
@@ -47,5 +53,27 @@ class BienThe extends Model
         'gia' => 'float',
         'giakm' => 'float',
         'soluong' => 'integer',
+        'anhien' => 'boolean',
     ];
+
+    protected $appends = ['full_name'];
+
+    public function getFullNameAttribute()
+    {
+        $parts = [];
+        
+        if ($this->sanpham) {
+            $parts[] = $this->sanpham->tensp;
+        }
+
+        $attributes = [];
+        if ($this->nhanbanh) $attributes[] = $this->nhanbanh->tenNhanBanh;
+        if ($this->khoiluong) $attributes[] = $this->khoiluong->khoiluong;
+
+        if (!empty($attributes)) {
+            $parts[] = '(' . implode(' - ', $attributes) . ')';
+        }
+
+        return implode(' ', $parts);
+    }
 }

@@ -7,97 +7,83 @@ use App\Models\Danhmuc;
 use App\Models\DanhMucBaiViet;
 use App\Models\Donhang;
 use App\Models\Sanpham;
-use App\Models\User;
+use App\Models\Bienthe;
+use App\Models\DonHangChiTiet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 
 class DashBoardController extends Controller
 {
 
     public function index()
     {
+        // 1. Metrics Calculation
+        $now = Carbon::now();
+        $thisMonth = $now->copy()->startOfMonth();
+        $lastMonth = $now->copy()->subMonth()->startOfMonth();
+        $lastMonthEnd = $now->copy()->subMonth()->endOfMonth();
 
-        $tongbaiviet = Baiviet::orderBy('id', 'desc')->count();
-        $baiViets = Baiviet::where('anhien', 1)->paginate(10);
-        $startOfWeek = Carbon::now()->startOfWeek();
-        $endOfWeek = Carbon::now()->endOfWeek();
-        $tongsanpham = Sanpham::whereBetween('created_at', [$startOfWeek, $endOfWeek])->count();
-        $tongdonhangmoi = Donhang::where('created_at', '>=', Carbon::now()->subDay())
-            ->count();
-        $listkhachhangmoi = User::where('created_at', '>=', Carbon::now()->subDay())->get();
-        $danhmucCountSP = Danhmuc::select('id', 'tendanhmuc')
-            ->selectRaw('(SELECT COUNT(*) FROM sanphams WHERE sanphams.id_danhmuc = danhmucs.id) as so_sanpham')
-            ->orderBy('id', 'asc')
-            ->limit(5)
-            ->get();
-        // -----doanh thu---------------------
-        $doanhThuThangNay = Carbon::now()->month;
-        $doanhThuThangTruoc = Carbon::now()->subMonth()->month;
-
-        // Tổng doanh thu tháng này
-        $tongDoanhThuThangNay = Donhang::where('trangthai', 'hoàn thành')
-            ->whereMonth('created_at', $doanhThuThangNay)
+        // Revenue (Completed orders only)
+        $revenueThisMonth = Donhang::where('trangthai', 'hoàn thành')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
             ->sum('thanhtien');
 
-        // Tổng doanh thu tháng trước
-        $tongDoanhThuThangTruoc = Donhang::where('trangthai', 'hoàn thành')
-            ->whereMonth('created_at', $doanhThuThangTruoc)
+        $revenueLastMonth = Donhang::where('trangthai', 'hoàn thành')
+            ->whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
             ->sum('thanhtien');
 
-
-        $phanTramDoanhThu = 0;
-        if ($tongDoanhThuThangTruoc > 0) {
-            $phanTramDoanhThu = (($tongDoanhThuThangNay - $tongDoanhThuThangTruoc) / $tongDoanhThuThangTruoc) * 100;
+        $revenuePercent = 0;
+        if ($revenueLastMonth > 0) {
+            $revenuePercent = (($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100;
         }
 
-        $danhMucBaiViet = DanhMucBaiViet::all();
-        return view('welcome', compact('tongbaiviet', 'tongsanpham', 'tongdonhangmoi', 'listkhachhangmoi', 'danhmucCountSP', 'tongDoanhThuThangNay', 'phanTramDoanhThu', 'baiViets', 'danhMucBaiViet'));
-    }
+        // Orders metrics
+        $newOrders24h = Donhang::where('created_at', '>=', now()->subDay())->count();
+        $pendingOrders = Donhang::where('trangthai', 'chờ xác nhận')->count();
+        $totalProducts = Sanpham::count();
 
+        // 2. Actionables
+        $latestOrders = Donhang::orderByDesc('created_at')
+            ->take(10)
+            ->get(['id', 'tennguoinhan', 'phone', 'thanhtien', 'trangthai', 'created_at']);
 
-    public function create()
-    {
-        //
-    }
+        $lowStockVariants = Bienthe::with(['sanpham', 'loaibanh', 'khoiluong', 'nhanbanh'])
+            ->where('soluong', '<', 10)
+            ->orderBy('soluong', 'asc')
+            ->take(5)
+            ->get();
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        // 3. Overview
+        // Top 5 selling variants
+        $topSellers = DonHangChiTiet::select('id_bienthe', DB::raw('SUM(soluong) as total_sold'))
+            ->groupBy('id_bienthe')
+            ->orderByDesc('total_sold')
+            ->with(['bienthe.sanpham', 'bienthe.loaibanh'])
+            ->take(5)
+            ->get();
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+       
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return \Inertia\Inertia::render('Dashboard', [
+            'metrics' => [
+                'revenueThisMonth' => $revenueThisMonth,
+                'revenuePercent' => round($revenuePercent, 1),
+                'newOrders24h' => $newOrders24h,
+                'pendingOrders' => $pendingOrders,
+                'totalProducts' => $totalProducts,
+            ],
+            'actionables' => [
+                'latestOrders' => $latestOrders,
+                'lowStockVariants' => $lowStockVariants,
+            ],
+            'overview' => [
+                'topSellers' => $topSellers,
+              
+            ]
+        ]);
     }
 }

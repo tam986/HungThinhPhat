@@ -13,30 +13,87 @@ use App\Models\ThanhToan;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Events\OrderStatusChanged;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
+use Inertia\Inertia;
+
 class DonHangController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Donhang::orderBy('created_at', 'desc')->paginate(5);
-        $magiamgias = Magiamgia::all();
-        return view('DonHang', compact('orders'));
+        $query = Donhang::with(['user', 'thanhToan'])
+            ->withSum('donhangchitiet as total_quantity', 'soluong');
+
+        // Lọc theo trạng thái
+        if ($request->filled('trangthai')) {
+            $query->where('trangthai', $request->trangthai);
+        }
+
+        // Lọc theo mã giảm giá
+        if ($request->has('has_discount')) {
+            if ($request->has_discount === 'yes') {
+                $query->whereNotNull('id_giamgia');
+            } elseif ($request->has_discount === 'no') {
+                $query->whereNull('id_giamgia');
+            }
+        }
+
+        // Search theo ID hoặc tên người nhận
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%$search%")
+                  ->orWhere('tennguoinhan', 'like', "%$search%")
+                  ->orWhere('phone', 'like', "%$search%");
+            });
+        }
+
+        $orders = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+
+        // Thống kê cho thẻ MetricCard
+        $totalOrders = Donhang::count();
+        $totalRevenue = Donhang::where('trangthai', 'hoàn thành')->sum('thanhtien');
+
+        // Danh sách các trạng thái để frontend hiển thị bộ lọc
+        $statuses = [
+            'chờ xác nhận',
+            'đã xác nhận',
+            'đang giao',
+            'hoàn thành',
+            'đã hủy'
+        ];
+
+        return Inertia::render('Orders/Index', [
+            'orders' => $orders,
+            'stats' => [
+                'total_orders' => $totalOrders,
+                'total_revenue' => $totalRevenue,
+            ],
+            'statuses' => $statuses,
+            'filters' => $request->all(['trangthai', 'has_discount', 'search'])
+        ]);
     }
     public function show($id)
     {
-        $donhang = Donhang::with(['donhangchitiet', 'donhangchitiet.bienthe', 'donhangchitiet.bienthe.sanpham', 'thanhToan'])->findOrFail($id);
-        return view('Donhang.Detail', compact('donhang'));
+        $donhang = Donhang::with(['donhangchitiet.bienthe.sanpham', 'donhangchitiet.bienthe.khoiluong', 'donhangchitiet.bienthe.nhanbanh', 'thanhToan', 'user'])->findOrFail($id);
+        return Inertia::render('Orders/Detail', [
+            'order' => $donhang
+        ]);
     }
-     public function create()
+
+    public function create()
     {
-        $users = User::all();
-        $sanphams = Sanpham::with(['bienthe', 'bienthe.khoiluong', 'bienthe.nhanbanh'])->get();
-        $vouchers = Magiamgia::where('trangthai', 0)->get();
-        $categories = Danhmuc::all();
-        $danhmucAll = BienThe::with('sanpham', 'sanpham.danhmuc', 'sanpham.nhacungcap')->get();
-        return view('Donhang.Create', compact('users', 'sanphams', 'vouchers', 'danhmucAll', 'categories'));
+        $users = User::all(['id', 'hoten', 'email', 'sodienthoai', 'diachi']);
+        $sanphams = Sanpham::with(['bienthe.khoiluong', 'bienthe.nhanbanh'])->get();
+        $vouchers = Magiamgia::where('trangthai', 0)->where('soluong', '>', 0)->get();
+        
+        return Inertia::render('Orders/Create', [
+            'users' => $users,
+            'sanphams' => $sanphams,
+            'vouchers' => $vouchers,
+        ]);
     }
 
     public function store(Request $request)
@@ -252,7 +309,11 @@ class DonHangController extends Controller
         ]);
 
         $donhang->update(['trangthai' => $validated['trangthai']]);
-        flash()->success('Đơn đã được duyệt thành công!', ['timeout' => 2000]);
+        
+        // Broadcast the status change back to the client
+        event(new OrderStatusChanged($donhang, $donhang->id_user));
+
+        flash()->success('Đơn đã được cập nhật thành công!', ['timeout' => 2000]);
         return redirect()->back();
     }
     public function updateTT(Request $request, $id)

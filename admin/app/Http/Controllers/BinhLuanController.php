@@ -6,13 +6,18 @@ use Illuminate\Http\Request;
 use App\Models\BinhLuan;
 use Illuminate\Support\Facades\DB;
 
+use Inertia\Inertia;
+
 class BinhLuanController extends Controller
 {
    
     public function index()
     {
-        $comments = BinhLuan::with(['bienthe.sanpham', 'user'])->paginate(10);
-        return view('Binhluan', compact('comments'));
+        $comments = BinhLuan::with(['bienthe.sanpham', 'user'])->latest()->paginate(10);
+        
+        return Inertia::render('Comments/Index', [
+            'comments' => $comments
+        ]);
     }
 
     public function duyet($id)
@@ -26,19 +31,20 @@ class BinhLuanController extends Controller
     {
         $comment = BinhLuan::findOrFail($id);
         $comment->update(['trangthai' => 'từ chối']);
-        return redirect()->back()->with('success', 'Bình luận đã bị ẩn.');
+        return redirect()->back()->with('success', 'Bình luận đã bị từ chối.');
     }
+
     public function active($id)
     {
         $comment = BinhLuan::findOrFail($id);
-        $comment->update(['anhien' => 0]);
+        $comment->update(['anhien' => 1]);
         return redirect()->back()->with('success', 'Bình luận đã được hiển thị.');
     }
 
     public function unactive($id)
     {
         $comment = BinhLuan::findOrFail($id);
-        $comment->update(['anhien' => 1]);
+        $comment->update(['anhien' => 0]);
         return redirect()->back()->with('success', 'Bình luận đã bị ẩn.');
     }
 }

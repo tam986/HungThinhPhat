@@ -13,21 +13,12 @@ use App\Models\Nhanbanh;
 use App\Models\Nhacungcap;
 use App\Models\Danhmuc;
 use App\Models\Sanpham;
+use App\Models\Loaibanh;
+
+use Inertia\Inertia;
 
 class AdminSPController extends Controller
 {
-    private function getTotalSp($sanphams)
-    {
-        $bientheSums = Bienthe::selectRaw('id_sp, SUM(soluong) as total_soluong')
-            ->groupBy('id_sp')
-            ->pluck('total_soluong', 'id_sp')
-            ->toArray();
-
-        foreach ($sanphams as $sp) {
-            $sp->total_soluong = $bientheSums[$sp->id] ?? 0;
-        }
-    }
-
     private function getSortSp($query, Request $request)
     {
         $search = $request->query('search');
@@ -37,13 +28,16 @@ class AdminSPController extends Controller
         $status = $request->query('status');
 
         if ($search) {
-            $query->where('tensp', 'like', "%{$search}%")
-                ->orWhereHas('danhmuc', function ($q) use ($search) {
-                    $q->where('tendanhmuc', 'like', "%{$search}%");
-                })
-                ->orWhereHas('nhacungcap', function ($q) use ($search) {
-                    $q->where('tennhacungcap', 'like', "%{$search}%");
-                });
+            $query->where(function($q) use ($search) {
+                $q->where('id', $search)
+                  ->orWhere('tensp', 'like', "%{$search}%")
+                  ->orWhereHas('danhmuc', function ($sub) use ($search) {
+                      $sub->where('tendanhmuc', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('nhacungcap', function ($sub) use ($search) {
+                      $sub->where('tennhacungcap', 'like', "%{$search}%");
+                  });
+            });
         }
 
         if ($danhmuc) {
@@ -55,43 +49,57 @@ class AdminSPController extends Controller
         }
 
         if ($status !== null) {
-            $query->where('trangthai', $status);
+            $query->where('anhien', $status);
         }
 
         if ($sort === 'latest') {
             $query->orderByDesc('id');
         } elseif ($sort === 'name') {
             $query->orderBy('tensp', 'asc');
-        } elseif ($sort === 'category') {
-            $query->join('danhmucs', 'sanphams.id_danhmuc', '=', 'danhmucs.id')
-                ->orderBy('danhmucs.tendanhmuc', 'asc')
-                ->select('sanphams.*');
         } elseif ($sort === 'name-asc') {
             $query->orderBy('tensp', 'asc');
         } elseif ($sort === 'name-desc') {
             $query->orderBy('tensp', 'desc');
+        } elseif ($sort === 'stock-desc') {
+            $query->orderBy('total_stock', 'desc');
+        } else {
+            $query->orderByDesc('id');
         }
     }
 
     public function index(Request $request)
     {
         $perPage = $request->input('per_page', 10);
-        $query = Sanpham::query()->with(['bienthe', 'danhmuc', 'nhacungcap']);
+        $query = Sanpham::query()
+            ->with(['danhmuc', 'nhacungcap', 'bienthe' => function($q) {
+                $q->with(['khoiluong', 'nhanbanh'])->select('id', 'id_sp', 'hinh', 'id_khoiluong', 'id_nhanbanh');
+            }])
+            ->withCount('bienthe as variant_count')
+            ->withSum('bienthe as total_stock', 'soluong')
+            ->withMin('bienthe as min_price', 'gia')
+            ->withMax('bienthe as max_price', 'gia');
+
         $this->getSortSp($query, $request);
 
-        $sanphams = $query->with(['danhmuc', 'nhacungcap'])->paginate($perPage)->withQueryString();
-        $this->getTotalSp($sanphams);
+        $sanphams = $query->paginate($perPage)->withQueryString();
 
         $danhmucs = Danhmuc::all();
         $nhacungcaps = Nhacungcap::all(['id', 'tennhacungcap']);
 
-        return view('sp', compact('sanphams', 'danhmucs', 'nhacungcaps'));
+        return Inertia::render('Products/Index', [
+            'sanphams' => $sanphams,
+            'danhmucs' => $danhmucs,
+            'nhacungcaps' => $nhacungcaps,
+            'filters' => $request->only(['search', 'sort', 'danhmuc', 'nhacungcap', 'status'])
+        ]);
     }
 
     public function trashed(Request $request)
     {
         $perPage = $request->input('per_page', 10);
-        $query = Sanpham::onlyTrashed()->with(['bienthe', 'danhmuc', 'nhacungcap']);
+        $query = Sanpham::onlyTrashed()->with(['bienthe' => function($q) {
+            $q->select('id', 'id_sp', 'hinh');
+        }, 'danhmuc', 'nhacungcap']);
         $this->getSortSp($query, $request);
 
         $trashedSanphams = $query->paginate($perPage)->withQueryString();
@@ -100,17 +108,31 @@ class AdminSPController extends Controller
         $danhmucs = Danhmuc::all();
         $nhacungcaps = Nhacungcap::all(['id', 'tennhacungcap']);
 
-        return view('trashed', compact('trashedSanphams', 'danhmucs', 'nhacungcaps'));
+        return Inertia::render('Products/Trashed', [
+            'sanphams' => $trashedSanphams,
+            'danhmucs' => $danhmucs,
+            'nhacungcaps' => $nhacungcaps,
+            'filters' => $request->only(['search', 'sort', 'danhmuc', 'nhacungcap', 'status'])
+        ]);
     }
 
     public function detail($id)
     {
+        $product = Sanpham::with([
+            'bienthe.khoiluong',
+            'bienthe.nhanbanh',
+            'danhmuc',
+            'nhacungcap'
+        ])->findOrFail($id);
 
-        $sanpham = Sanpham::with('bienthe', 'danhmuc', 'nhacungcap')->findOrFail($id);
+        $khoiluongs = Khoiluong::all();
+        $nhanbanhs = Nhanbanh::all();
 
-        $total_soluong = Bienthe::where('id_sp', $sanpham->id)->sum('soluong');
-
-        return view('AdminSp.Detail', compact('sanpham', 'total_soluong'));
+        return Inertia::render('Products/Detail', [
+            'product' => $product,
+            'khoiluongs' => $khoiluongs,
+            'nhanbanhs' => $nhanbanhs,
+        ]);
     }
 
 
@@ -120,90 +142,58 @@ class AdminSPController extends Controller
         $nhacungcaps = Nhacungcap::all();
         $khoiluong = Khoiluong::all();
         $nhanbanh = Nhanbanh::all();
-        return view('AdminSp.Create', compact('danhmucs', 'nhacungcaps', 'khoiluong', 'nhanbanh'));
+        
+        return Inertia::render('Products/Create', [
+            'danhmucs' => $danhmucs,
+            'nhacungcaps' => $nhacungcaps,
+            'khoiluong' => $khoiluong,
+            'nhanbanh' => $nhanbanh,
+        ]);
     }
 
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validatedData = $request->validate([
             'tensp' => 'required|string|max:255',
             'id_danhmuc' => 'required|exists:danhmucs,id',
             'id_nhacungcap' => 'required|exists:nhacungcaps,id',
             'mota' => 'nullable|string',
-            'anhien' => 'nullable|int|in:0,1',
-
-            // Validate cho biến thể
-            'bienthe.soluong.*' => 'required|integer|min:0',
-            'bienthe.gia.*' => 'required|numeric|min:0',
-            'bienthe.giakm.*' => 'nullable|numeric|min:0',
-            'bienthe.hinh.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10048',
-            'bienthe.id_nhanbanh.*' => 'nullable|exists:nhanbanhs,id',
-            'bienthe.id_khoiluong.*' => 'required|exists:khoiluongs,id',
-            'bienthe.slug.*' => 'required|string|max:255|distinct|unique:bienthe,slug',
+            'anhien' => 'required|boolean',
+            'is_featured' => 'boolean',
+            'is_new' => 'boolean',
         ]);
 
-        DB::beginTransaction();
-        try {
-            // Tạo sản phẩm
-            $sanpham = Sanpham::create([
-                'tensp' => $validated['tensp'],
-                'id_danhmuc' => $validated['id_danhmuc'],
-                'id_nhacungcap' => $validated['id_nhacungcap'],
-                'mota' => $validated['mota'],
-                'anhien' => $validated['anhien'] ?? 1,
-                'luotxem' => 0,
-            ]);
+        $sanpham = Sanpham::create([
+            'tensp' => $validatedData['tensp'],
+            'id_danhmuc' => $validatedData['id_danhmuc'],
+            'id_nhacungcap' => $validatedData['id_nhacungcap'],
+            'mota' => $validatedData['mota'] ?? '',
+            'anhien' => $validatedData['anhien'],
+            'is_featured' => $request->boolean('is_featured'),
+            'is_new' => $request->boolean('is_new'),
+        ]);
 
-            // Xử lý biến thể
-            if ($request->has('bienthe')) {
-                $bientheData = $request->input('bienthe');
-                $hinhFiles = $request->file('bienthe')['hinh'] ?? [];
-
-                foreach ($bientheData['id_khoiluong'] as $key => $id_khoiluong) {
-                    $imagePath = null;
-
-                    if (isset($hinhFiles[$key]) && $hinhFiles[$key]->isValid()) {
-                        $imagePath = $hinhFiles[$key]->store('uploads/img-sp', 'public');
-                    }
-
-                    Bienthe::create([
-                        'id_sp' => $sanpham->id,
-                        'id_nhanbanh' => $bientheData['id_nhanbanh'][$key] ?? null,
-                        'id_khoiluong' => $id_khoiluong,
-                        'soluong' => $bientheData['soluong'][$key],
-                        'gia' => $bientheData['gia'][$key],
-                        'giakm' => $bientheData['giakm'][$key] ?? null,
-                        'hinh' => $imagePath,
-                        'slug' => $bientheData['slug'][$key],
-
-                    ]);
-                }
-            }
-
-            DB::commit();
-            flash()->success('Thêm sản phẩm thành công!');
-            return redirect()->route('sanpham.index');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Lỗi khi thêm sản phẩm hoặc biến thể: ' . $e->getMessage());
-            return back()->withErrors(['msg' => 'Đã xảy ra lỗi khi thêm sản phẩm: ' . $e->getMessage()]);
-        }
+        return redirect()->route('sanpham.detail', $sanpham->id)->with('success', 'Sản phẩm đã được tạo! Hãy thêm các biến thể bên dưới.');
     }
 
     public function edit($id)
     {
-        // Truy vấn từ Bienthe và lấy thông tin liên quan đến sản phẩm và các bảng khác
-        $bienthe = Bienthe::with(['sanpham', 'sanpham.danhmuc', 'sanpham.nhacungcap'])->findOrFail($id);
+        // Lấy sản phẩm cùng tất cả biến thể
+        $sanpham = Sanpham::with(['bienthe.nhanbanh', 'bienthe.khoiluong', 'danhmuc', 'nhacungcap'])->findOrFail($id);
 
-        // Lấy tất cả danh mục, nhà cung cấp, nhanbanh, khoiluong để hiển thị trong form
         $danhmucs = Danhmuc::all();
         $nhacungcaps = Nhacungcap::all();
         $nhanbanh = Nhanbanh::all();
         $khoiluong = Khoiluong::all();
 
-        // Trả về view cập nhật sản phẩm với tất cả thông tin cần thiết
-        return view('AdminSp.Update', compact('bienthe', 'danhmucs', 'nhacungcaps', 'nhanbanh', 'khoiluong'));
+        return Inertia::render('Products/Edit', [
+            'sanpham' => $sanpham,
+            'danhmucs' => $danhmucs,
+            'nhacungcaps' => $nhacungcaps,
+            'nhanbanh' => $nhanbanh,
+            'khoiluong' => $khoiluong,
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -213,110 +203,168 @@ class AdminSPController extends Controller
             'id_danhmuc' => 'required|exists:danhmucs,id',
             'id_nhacungcap' => 'required|exists:nhacungcaps,id',
             'mota' => 'nullable|string',
-            'existing_bienthe.*.soluong' => 'required|integer|min:0',
-            'existing_bienthe.*.gia' => 'required|numeric|min:0',
-            'existing_bienthe.*.giakm' => 'nullable|numeric|min:0',
-            'existing_bienthe.*.slug' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('bienthe', 'slug')->ignore($id, 'id_sp') // Sử dụng Rule::unique và ignore
-            ],
-            'existing_bienthe.*.hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10048',
-            'new_bienthe.*.id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
-            'new_bienthe.*.id_khoiluong' => 'required|exists:khoiluongs,id',
-            'new_bienthe.*.soluong' => 'required|integer|min:0',
-            'new_bienthe.*.gia' => 'required|numeric|min:0',
-            'new_bienthe.*.giakm' => 'nullable|numeric|min:0',
-            'new_bienthe.*.slug' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('bienthe', 'slug')
-            ],
-            'new_bienthe.*.hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10048',
-            'deleted_bienthe' => 'nullable|string',
+            'anhien' => 'required|boolean',
+            'is_featured' => 'boolean',
+            'is_new' => 'boolean',
         ]);
 
-        return DB::transaction(function () use ($request, $id, $validatedData) {
-            $product = Sanpham::findOrFail($id);
-            $product->update([
-                'tensp' => $validatedData['tensp'],
-                'id_danhmuc' => $validatedData['id_danhmuc'],
-                'id_nhacungcap' => $validatedData['id_nhacungcap'],
-                'mota' => $validatedData['mota'],
+        $product = Sanpham::findOrFail($id);
+        
+        $product->update([
+            'tensp' => $validatedData['tensp'],
+            'id_danhmuc' => $validatedData['id_danhmuc'],
+            'id_nhacungcap' => $validatedData['id_nhacungcap'],
+            'mota' => $validatedData['mota'] ?? '',
+            'anhien' => $validatedData['anhien'],
+            'is_featured' => $request->boolean('is_featured'),
+            'is_new' => $request->boolean('is_new'),
+        ]);
+
+        return redirect()->route('sanpham.detail', $id)->with('success', 'Thông tin sản phẩm đã được cập nhật thành công!');
+    }
+
+    public function storeVariant(Request $request, $id_sp)
+    {
+        $validated = $request->validate([
+            'id_khoiluong' => 'required|exists:khoiluongs,id',
+            'id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
+            'gia' => 'required|numeric|min:0',
+            'giakm' => 'nullable|numeric|min:0',
+            'soluong' => 'required|integer|min:0',
+            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:10048',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('hinh')) {
+            $imagePath = $request->file('hinh')->store('uploads/img-sp', 'public');
+        }
+
+        $variant = Bienthe::create(array_merge($validated, [
+            'id_sp' => $id_sp,
+            'hinh' => $imagePath,
+            'slug' => 'temp-' . uniqid(), // Will update after creation to use full name
+        ]));
+
+        // Tự động tạo slug từ full_name (không cần ID để URL sạch hơn)
+        $variant->update(['slug' => \Illuminate\Support\Str::slug($variant->full_name)]);
+
+        return back()->with('success', 'Biến thể mới đã được thêm thành công!');
+    }
+
+    /**
+     * Store multiple variants at once (Step 2 of creation/update).
+     */
+    public function storeBulkVariants(Request $request, $id_sp)
+    {
+        $request->validate([
+            'variants' => 'required|array|min:1',
+            'variants.*.id_khoiluong' => 'required|exists:khoiluongs,id',
+            'variants.*.id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
+            'variants.*.gia' => 'required|numeric|min:0',
+            'variants.*.giakm' => 'nullable|numeric|min:0',
+            'variants.*.soluong' => 'required|integer|min:0',
+            'variants.*.hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
+        ]);
+
+        $product = Sanpham::findOrFail($id_sp);
+        $count = 0;
+
+        foreach ($request->variants as $index => $vData) {
+            // Check if combination already exists
+            $exists = Bienthe::where('id_sp', $id_sp)
+                ->where('id_khoiluong', $vData['id_khoiluong'])
+                ->where('id_nhanbanh', $vData['id_nhanbanh'] ?? null)
+                ->exists();
+
+            if ($exists) continue;
+
+            // Xử lý tệp hình ảnh
+            $imagePath = null;
+            if ($request->hasFile("variants.$index.hinh")) {
+                $imagePath = $request->file("variants.$index.hinh")->store('variants', 'public');
+            }
+
+            $variant = Bienthe::create([
+                'id_sp' => $id_sp,
+                'id_khoiluong' => $vData['id_khoiluong'],
+                'id_nhanbanh' => $vData['id_nhanbanh'] ?? null,
+                'gia' => $vData['gia'],
+                'giakm' => $vData['giakm'] ?? null,
+                'soluong' => $vData['soluong'],
+                'hinh' => $imagePath,
+                'slug' => 'temp-' . uniqid(),
             ]);
 
-            // Xử lý deleted_bienthe
-            if (!empty($validatedData['deleted_bienthe'])) {
-                $deletedBientheIds = explode(',', $validatedData['deleted_bienthe']);
-                $deletedBienthes = Bienthe::whereIn('id', $deletedBientheIds)->where('id_sp', $product->id)->get();
-                foreach ($deletedBienthes as $bienthe) {
-                    if ($bienthe->hinh && file_exists(storage_path('app/public/' . $bienthe->hinh))) {
-                        unlink(storage_path('app/public/' . $bienthe->hinh));
-                    }
-                    $bienthe->delete();
-                }
-            }
+            // Update slug based on full_name attribute
+            $variant->update([
+                'slug' => \Illuminate\Support\Str::slug($variant->full_name)
+            ]);
+            $count++;
+        }
 
-            // Cập nhật existing_bienthe
-            if (isset($validatedData['existing_bienthe'])) {
-                foreach ($validatedData['existing_bienthe'] as $bientheId => $data) {
-                    $bienthe = Bienthe::findOrFail($bientheId);
-                    $updateData = [
-                        'soluong' => $data['soluong'],
-                        'gia' => $data['gia'],
-                        'slug' => $data['slug'],
-                        'giakm' => $data['giakm'] ?? null,
-                    ];
-
-                    // Xử lý hình ảnh nếu có
-                    if ($request->hasFile("existing_bienthe.$bientheId.hinh") && $request->file("existing_bienthe.$bientheId.hinh")->isValid()) {
-                        if ($bienthe->hinh && file_exists(storage_path('app/public/' . $bienthe->hinh))) {
-                            unlink(storage_path('app/public/' . $bienthe->hinh));
-                        }
-                        $updateData['hinh'] = $request->file("existing_bienthe.$bientheId.hinh")->store('uploads/img-sp', 'public');
-                    }
-
-                    $bienthe->update($updateData);
-                }
-            }
-
-            // Thêm mới new_bienthe
-            if (isset($validatedData['new_bienthe'])) {
-                foreach ($validatedData['new_bienthe'] as $index => $data) {
-                    $imagePath = null;
-                    if ($request->hasFile("new_bienthe.$index.hinh") && $request->file("new_bienthe.$index.hinh")->isValid()) {
-                        $imagePath = $request->file("new_bienthe.$index.hinh")->store('uploads/img-sp', 'public');
-                    }
-
-                    // Tạo bản ghi mới
-                    Bienthe::create([
-                        'id_sp' => $product->id,
-                        'id_nhanbanh' => $data['id_nhanbanh'] ?? null,
-                        'id_khoiluong' => $data['id_khoiluong'],
-                        'soluong' => $data['soluong'],
-                        'slug' => $data['slug'],
-                        'gia' => $data['gia'],
-                        'giakm' => $data['giakm'] ?? null,
-                        'hinh' => $imagePath,
-                    ]);
-                }
-            }
-
-            return redirect()->route('sanpham.index')->with('success', 'Sản phẩm đã được cập nhật thành công!');
-        });
+        return back()->with('success', "Đã tạo thành công {$count} biến thể mới!");
     }
+
+    public function updateVariant(Request $request, $id)
+    {
+        $variant = Bienthe::findOrFail($id);
+        $validated = $request->validate([
+            'id_khoiluong' => 'required|exists:khoiluongs,id',
+            'id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
+            'gia' => 'required|numeric|min:0',
+            'giakm' => 'nullable|numeric|min:0',
+            'soluong' => 'required|integer|min:0',
+            'hinh' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:10048',
+        ]);
+
+        $imagePath = $variant->hinh;
+        if ($request->hasFile('hinh')) {
+            $imagePath = $request->file('hinh')->store('uploads/img-sp', 'public');
+        }
+
+        $variant->update(array_merge($validated, [
+            'hinh' => $imagePath,
+            'slug' => \Illuminate\Support\Str::slug($variant->full_name),
+        ]));
+
+        return back()->with('success', 'Biến thể đã được cập nhật thành công!');
+    }
+
+    public function destroyVariant($id)
+    {
+        $variant = Bienthe::findOrFail($id);
+        // Optional: delete image file
+        if ($variant->hinh && file_exists(storage_path('app/public/' . $variant->hinh))) {
+            unlink(storage_path('app/public/' . $variant->hinh));
+        }
+        $variant->delete();
+        return back()->with('success', 'Biến thể đã được xoá thành công!');
+    }
+
     public function updateStatus(Request $request, $id)
     {
         $sanpham = Sanpham::findOrFail($id);
         $validated = $request->validate([
-            'trangthai' => 'required|in:mới,đã thêm',
+            'anhien' => 'required|string',
         ]);
 
-        $sanpham->update(['trangthai' => $validated['trangthai']]);
+        $sanpham->update(['anhien' => $validated['anhien']]);
 
         return redirect()->route('sanpham.index')->with('success', 'Trạng thái sản phẩm đã được cập nhật!');
+    }
+
+    public function toggleFeatured($id)
+    {
+        $sanpham = Sanpham::findOrFail($id);
+        $sanpham->update(['is_featured' => !$sanpham->is_featured]);
+        return redirect()->route('sanpham.index')->with('success', 'Đã cập nhật trạng thái Nổi bật!');
+    }
+
+    public function toggleNew($id)
+    {
+        $sanpham = Sanpham::findOrFail($id);
+        $sanpham->update(['is_new' => !$sanpham->is_new]);
+        return redirect()->route('sanpham.index')->with('success', 'Đã cập nhật trạng thái Sản phẩm mới!');
     }
 
     public function softDelete($id)
@@ -332,17 +380,26 @@ class AdminSPController extends Controller
         $sanpham = Sanpham::onlyTrashed()->findOrFail($id);
         $sanpham->restore();
 
-        return redirect()->back()->with('success', 'Sản phẩm đã được khôi phục.');
+        return redirect()->route('sanpham.trashed')->with('success', 'Sản phẩm đã được khôi phục.');
     }
 
     public function destroy($id)
     {
-        $sanpham = Sanpham::onlyTrashed()->findOrFail($id);
+        $sanpham = Sanpham::onlyTrashed()->with('bienthe')->findOrFail($id);
+        
+        // Xóa tất cả ảnh của các biến thể trong storage
+        foreach ($sanpham->bienthe as $variant) {
+            if ($variant->hinh) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($variant->hinh);
+            }
+        }
+
+        // Xóa biến thể và sản phẩm khỏi DB
         $sanpham->bienthe()->delete();
         $sanpham->forceDelete();
 
         return redirect()->route('sanpham.trashed')
-            ->with('success', 'Sản phẩm và các biến thể đã được xóa vĩnh viễn.');
+            ->with('success', 'Sản phẩm và toàn bộ biến thể (bao gồm hình ảnh) đã được xóa vĩnh viễn.');
     }
 
   public function getKhoiluongNhanbanh($id_sp)

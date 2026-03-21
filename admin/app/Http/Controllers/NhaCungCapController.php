@@ -7,6 +7,8 @@ use App\Models\{Nhacungcap, Sanpham};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
+use Inertia\Inertia;
+
 class NhaCungCapController extends Controller
 {
     private function getSortNCC($query, Request $request)
@@ -42,15 +44,7 @@ class NhaCungCapController extends Controller
 
         $this->getSortNCC($query, $request);
 
-        $nhacungcaps = $query->paginate($perPage)->appends($request->only([
-            'search',
-            'sort',
-            'thutu',
-            'anhien',
-            'per_page',
-        ]));
-
-        $totalNhacungcap = $nhacungcaps->total();
+        $nhacungcaps = $query->paginate($perPage)->withQueryString();
 
         $spCount = Sanpham::selectRaw('id_nhacungcap, COUNT(*) as total')
             ->groupBy('id_nhacungcap')
@@ -59,9 +53,14 @@ class NhaCungCapController extends Controller
 
         foreach ($nhacungcaps as $ncc) {
             $ncc->sanpham_count = $spCount[$ncc->id] ?? 0;
+            $ncc->hinhanh_url = $ncc->img ? Storage::url($ncc->img) : null;
         }
 
-        return view('NhaCungCap', compact('nhacungcaps', 'totalNhacungcap'));
+        return Inertia::render('Suppliers/Index', [
+            'nhacungcaps' => $nhacungcaps,
+            'filters' => $request->only(['search', 'sort', 'thutu', 'anhien', 'per_page']),
+            'totalNhacungcap' => $nhacungcaps->total()
+        ]);
     }
 
     public function detail($id)
@@ -74,22 +73,23 @@ class NhaCungCapController extends Controller
             ->toArray();
 
         $nhacungcap->sanpham_count = $spCount[$nhacungcap->id] ?? 0;
+        $nhacungcap->hinhanh_url = $nhacungcap->hinhanh ? Storage::url($nhacungcap->hinhanh) : null;
 
-        return view('NhaCungCap.Detail', compact('nhacungcap'));
+        return Inertia::render('Suppliers/Detail', ['nhacungcap' => $nhacungcap]);
     }
 
     public function create()
     {
-        return view('NhaCungCap.Create');
+        return Inertia::render('Suppliers/Create');
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'tennhacungcap' => 'required|string|max:255|unique:nhacungcap,tennhacungcap',
+            'tennhacungcap' => 'required|string|max:255|unique:nhacungcaps,tennhacungcap',
             'thutu' => 'required|integer|min:0',
             'anhien' => 'required|in:0,1',
-            'hinhanh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'img' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
@@ -100,15 +100,15 @@ class NhaCungCapController extends Controller
                 ->increment('thutu');
 
             $hinhanhPath = null;
-            if ($request->hasFile('hinhanh')) {
-                $hinhanhPath = $request->file('hinhanh')->store('nhacungcap', 'public');
+            if ($request->hasFile('img')) {
+                $hinhanhPath = $request->file('img')->store('nhacungcaps', 'public');
             }
 
             Nhacungcap::create([
                 'tennhacungcap' => $validated['tennhacungcap'],
                 'thutu' => $thutu,
                 'anhien' => $validated['anhien'],
-                'hinhanh' => $hinhanhPath,
+                'img' => $hinhanhPath,
             ]);
 
             return redirect()->route('nhacungcap.index')
@@ -119,16 +119,17 @@ class NhaCungCapController extends Controller
     public function edit($id)
     {
         $nhacungcap = Nhacungcap::findOrFail($id);
-        return view('NhaCungCap.Update', compact('nhacungcap'));
+        $nhacungcap->hinhanh_url = $nhacungcap->img ? Storage::url($nhacungcap->img) : null;
+        return Inertia::render('Suppliers/Edit', ['nhacungcap' => $nhacungcap]);
     }
 
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'tennhacungcap' => 'required|string|max:255|unique:nhacungcap,tennhacungcap,' . $id,
+            'tennhacungcap' => 'required|string|max:255|unique:nhacungcaps,tennhacungcap,' . $id,
             'thutu' => 'required|integer|min:0',
             'anhien' => 'required|in:0,1',
-            'hinhanh' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'img' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
         ]);
 
         return DB::transaction(function () use ($validated, $request, $id) {
@@ -136,22 +137,22 @@ class NhaCungCapController extends Controller
             $newThutu = $validated['thutu'];
             $oldThutu = $nhacungcap->thutu;
 
-            if ($oldThutu === $newThutu) {
-                $hinhanhPath = $nhacungcap->hinhanh;
-                if ($request->hasFile('hinhanh')) {
-                    if ($nhacungcap->hinhanh) {
-                        Storage::disk('public')->delete($nhacungcap->hinhanh);
-                    }
-                    $hinhanhPath = $request->file('hinhanh')->store('nhacungcaps', 'public');
+            $hinhanhPath = $nhacungcap->img;
+            if ($request->hasFile('img')) {
+                if ($nhacungcap->img) {
+                    Storage::disk('public')->delete($nhacungcap->img);
                 }
+                $hinhanhPath = $request->file('img')->store('nhacungcaps', 'public');
+            }
 
+            if ($oldThutu === $newThutu) {
                 $nhacungcap->update([
                     'tennhacungcap' => $validated['tennhacungcap'],
                     'thutu' => $newThutu,
                     'anhien' => $validated['anhien'],
-                    'hinhanh' => $hinhanhPath,
+                    'img' => $hinhanhPath,
                 ]);
-                return redirect()->route('nhacungcap.detail', $id)
+                return redirect()->route('nhacungcap.index')
                     ->with('success', 'Nhà cung cấp đã được cập nhật thành công!');
             }
 
@@ -167,19 +168,11 @@ class NhaCungCapController extends Controller
                     ->increment('thutu');
             }
 
-            $hinhanhPath = $nhacungcap->hinhanh;
-            if ($request->hasFile('hinhanh')) {
-                if ($nhacungcap->hinhanh) {
-                    Storage::disk('public')->delete($nhacungcap->hinhanh);
-                }
-                $hinhanhPath = $request->file('hinhanh')->store('nhacungcaps', 'public');
-            }
-
             $nhacungcap->update([
                 'tennhacungcap' => $validated['tennhacungcap'],
                 'thutu' => $newThutu,
                 'anhien' => $validated['anhien'],
-                'hinhanh' => $hinhanhPath,
+                'img' => $hinhanhPath,
             ]);
 
             $allNhacungcaps = Nhacungcap::orderBy('thutu', 'asc')->get();
@@ -191,7 +184,7 @@ class NhaCungCapController extends Controller
                 $expectedThutu++;
             }
 
-            return redirect()->route('nhacungcap.detail', $id)
+            return redirect()->route('nhacungcap.index')
                 ->with('success', 'Nhà cung cấp đã được cập nhật thành công!');
         });
     }
@@ -207,31 +200,19 @@ class NhaCungCapController extends Controller
                     ->with('error', 'Nhà cung cấp đang có sản phẩm, không thể xóa.');
             }
 
-            $currentThutu = $nhacungcap->thutu;
-            if ($currentThutu !== null) {
-                $nextThutu = Nhacungcap::where('thutu', '>', $currentThutu)
-                    ->min('thutu');
-
-                Nhacungcap::where('thutu', '>', $currentThutu)
-                    ->decrement('thutu');
-
-                if ($nextThutu !== null) {
-                    $adjustedThutu = $nextThutu - 1;
-                    $previousThutu = Nhacungcap::where('thutu', '<', $currentThutu)
-                        ->max('thutu');
-
-                    if ($previousThutu !== null && $adjustedThutu <= $previousThutu) {
-                        Nhacungcap::where('thutu', '>=', $previousThutu + 1)
-                            ->increment('thutu');
-                    }
-                }
-            }
-
-            if ($nhacungcap->hinhanh) {
-                Storage::disk('public')->delete($nhacungcap->hinhanh);
+            if ($nhacungcap->img) {
+                Storage::disk('public')->delete($nhacungcap->img);
             }
 
             $nhacungcap->delete();
+
+            // Re-order to ensure consistency
+            $allNhacungcaps = Nhacungcap::orderBy('thutu', 'asc')->get();
+            $expectedThutu = 1;
+            foreach ($allNhacungcaps as $ncc) {
+                $ncc->update(['thutu' => $expectedThutu]);
+                $expectedThutu++;
+            }
 
             return redirect()->route('nhacungcap.index')
                 ->with('success', 'Nhà cung cấp đã được xóa thành công.');
@@ -240,14 +221,24 @@ class NhaCungCapController extends Controller
 
     public function active($id)
     {
-        Nhacungcap::where('id', $id)->update(['anhien' => 0]);
+        Nhacungcap::where('id', $id)->update(['anhien' => 1]);
         return redirect()->route('nhacungcap.index')->with('success', 'Nhà cung cấp đã hiện');
     }
 
     public function unactive($id)
     {
-        Nhacungcap::where('id', $id)->update(['anhien' => 1]);
+        Nhacungcap::where('id', $id)->update(['anhien' => 0]);
         return redirect()->route('nhacungcap.index')->with('success', 'Nhà cung cấp đã ẩn');
+    }
+
+    public function toggleStatus($id)
+    {
+        $ncc = Nhacungcap::findOrFail($id);
+        $ncc->anhien = $ncc->anhien == 1 ? 0 : 1;
+        $ncc->save();
+
+        $statusText = $ncc->anhien == 1 ? 'đang hợp tác' : 'ngừng hợp tác';
+        return redirect()->back()->with('success', "Nhà cung cấp $statusText");
     }
 
     public function checkThutu(Request $request)

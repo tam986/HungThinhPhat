@@ -6,6 +6,8 @@ use App\Models\BienThe;
 use App\Models\Khoiluong;
 use Illuminate\Http\Request;
 
+use Inertia\Inertia;
+
 class KhoiLuongController extends Controller
 {
     private function getSortKL($query, Request $request)
@@ -29,13 +31,7 @@ class KhoiLuongController extends Controller
 
         $this->getSortKL($query, $request);
 
-        $khoiluongs = $query->paginate($perPage)->appends($request->only([
-            'search',
-            'sort',
-            'per_page',
-        ]));
-
-        $totalKhoiluong = $khoiluongs->total();
+        $khoiluongs = $query->paginate($perPage)->withQueryString();
 
         $btCount = BienThe::selectRaw('id_khoiluong, COUNT(*) as total')
             ->groupBy('id_khoiluong')
@@ -46,12 +42,15 @@ class KhoiLuongController extends Controller
             $kl->bienthe_count = $btCount[$kl->id] ?? 0;
         }
 
-        return view('Khoiluong', compact('khoiluongs', 'totalKhoiluong'));
+        return Inertia::render('Weights/Index', [
+            'weights' => $khoiluongs,
+            'filters' => $request->only(['search', 'sort', 'per_page'])
+        ]);
     }
 
     public function create()
     {
-        return view('KhoiLuong.Create');
+        return Inertia::render('Weights/Create');
     }
 
     public function store(Request $request)
@@ -71,7 +70,7 @@ class KhoiLuongController extends Controller
     public function edit($id)
     {
         $khoiluong = Khoiluong::findOrFail($id);
-        return view('KhoiLuong.Update', compact('khoiluong'));
+        return Inertia::render('Weights/Edit', ['weight' => $khoiluong]);
     }
 
     public function update(Request $request, $id)

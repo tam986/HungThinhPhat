@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Auth\Events\PasswordReset;
 
 class AuthController extends Controller
 {
@@ -76,6 +79,81 @@ class AuthController extends Controller
     $request->session()->regenerateToken();
 
     return redirect()->route('login.show');
+}
+
+public function showForgotPasswordForm()
+{
+    return view('auth.forgot-password');
+}
+
+public function sendResetLinkEmail(Request $request)
+{
+    $request->validate(['email' => 'required|email']);
+
+    $status = Password::sendResetLink(
+        $request->only('email')
+    );
+
+    return $status === Password::RESET_LINK_SENT
+        ? back()->with('success', __($status))
+        : back()->withErrors(['email' => __($status)]);
+}
+
+public function showResetPasswordForm(Request $request, $token)
+{
+    return view('auth.reset-password')->with(
+        ['token' => $token, 'email' => $request->email]
+    );
+}
+
+public function resetPassword(Request $request)
+{
+    $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
+        'password' => 'required|min:8|confirmed',
+    ]);
+
+    $status = Password::reset(
+        $request->only('email', 'password', 'password_confirmation', 'token'),
+        function ($user, $password) {
+            $user->forceFill([
+                'password' => Hash::make($password)
+            ])->setRememberToken(Str::random(60));
+
+            $user->save();
+
+            event(new PasswordReset($user));
+        }
+    );
+
+    return $status === Password::PASSWORD_RESET
+        ? redirect()->route('login.show')->with('success', __($status))
+        : back()->withErrors(['email' => [__($status)]]);
+}
+
+public function showRegistrationForm()
+{
+    return view('auth.register');
+}
+
+public function register(Request $request)
+{
+    $request->validate([
+        'hoten' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    // Using argon2id to satisfy "not Bcrypt" requirement
+    $user = User::create([
+        'hoten' => $request->hoten,
+        'email' => $request->email,
+        'password' => Hash::make($request->password, ['driver' => 'argon2id']),
+        'quyen' => 1,
+    ]);
+
+    return redirect()->route('login.show')->with('success', 'Tài khoản admin tạm thời đã được tạo (Argon2id).');
 }
 
 }

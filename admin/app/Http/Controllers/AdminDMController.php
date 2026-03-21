@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\{Danhmuc, Sanpham};
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+
+use Inertia\Inertia;
 
 class AdminDMController extends Controller
 {
@@ -58,9 +61,14 @@ class AdminDMController extends Controller
 
         foreach ($danhmucs as $dm) {
             $dm->sanpham_count = $spCount[$dm->id] ?? 0;
+            $dm->img_url = $dm->img ? Storage::url($dm->img) : null;
         }
 
-        return view('DanhMuc', compact('danhmucs', 'totalDanhmuc'));
+        return Inertia::render('Categories/Index', [
+            'danhmucs' => $danhmucs,
+            'total' => $totalDanhmuc,
+            'filters' => $request->only(['search', 'sort', 'anhien'])
+        ]);
     }
 
     public function detail($id)
@@ -74,12 +82,12 @@ class AdminDMController extends Controller
 
         $danhmuc->sanpham_count = $spCount[$danhmuc->id] ?? 0;
 
-        return view('AdminDm.Detail', compact('danhmuc'));
+        return Inertia::render('Categories/Detail', ['danhmuc' => $danhmuc]);
     }
 
     public function create()
     {
-        return view('AdminDm.Create');
+        return Inertia::render('Categories/Create');
     }
 
     public function store(Request $request)
@@ -89,6 +97,7 @@ class AdminDMController extends Controller
             'thutu' => 'required|integer|min:0',
             'anhien' => 'required|in:0,1',
             'mota' => 'nullable|string|max:1000',
+            'img' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -98,11 +107,17 @@ class AdminDMController extends Controller
                 ->orderBy('thutu', 'asc')
                 ->increment('thutu');
 
+            $imgPath = null;
+            if ($request->hasFile('img')) {
+                $imgPath = $request->file('img')->store('danhmucs', 'public');
+            }
+
             Danhmuc::create([
                 'tendanhmuc' => $validated['tendanhmuc'],
                 'thutu' => $thutu,
                 'anhien' => $validated['anhien'],
                 'mota' => $validated['mota'],
+                'img' => $imgPath,
             ]);
 
             return redirect()->route('danhmucDM.index')
@@ -113,7 +128,8 @@ class AdminDMController extends Controller
     public function edit($id)
     {
         $danhmuc = Danhmuc::findOrFail($id);
-        return view('AdminDm.Update', compact('danhmuc'));
+        $danhmuc->img_url = $danhmuc->img ? Storage::url($danhmuc->img) : null;
+        return Inertia::render('Categories/Edit', ['danhmuc' => $danhmuc]);
     }
 
     public function update(Request $request, $id)
@@ -123,12 +139,21 @@ class AdminDMController extends Controller
             'thutu' => 'required|integer|min:0',
             'anhien' => 'required|in:0,1',
             'mota' => 'nullable|string|max:1000',
+            'img' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp,avif|max:2048',
         ]);
 
-        return DB::transaction(function () use ($validated, $id) {
+        return DB::transaction(function () use ($validated, $id, $request) {
             $danhmuc = Danhmuc::findOrFail($id);
             $newThutu = $validated['thutu'];
             $oldThutu = $danhmuc->thutu;
+
+            $imgPath = $danhmuc->img;
+            if ($request->hasFile('img')) {
+                if ($danhmuc->img) {
+                    Storage::disk('public')->delete($danhmuc->img);
+                }
+                $imgPath = $request->file('img')->store('danhmucs', 'public');
+            }
 
             if ($oldThutu === $newThutu) {
                 $danhmuc->update([
@@ -136,8 +161,9 @@ class AdminDMController extends Controller
                     'thutu' => $newThutu,
                     'anhien' => $validated['anhien'],
                     'mota' => $validated['mota'],
+                    'img' => $imgPath,
                 ]);
-                return redirect()->route('danhmucDM.detail', $id)
+                return redirect()->route('danhmucDM.index')
                     ->with('success', 'Danh mục đã được cập nhật thành công!');
             }
 
@@ -158,8 +184,10 @@ class AdminDMController extends Controller
                 'thutu' => $newThutu,
                 'anhien' => $validated['anhien'],
                 'mota' => $validated['mota'],
+                'img' => $imgPath,
             ]);
 
+            // Re-order to ensure consistency
             $allDanhmucs = Danhmuc::orderBy('thutu', 'asc')->get();
             $expectedThutu = 1;
             foreach ($allDanhmucs as $dm) {
@@ -169,7 +197,7 @@ class AdminDMController extends Controller
                 $expectedThutu++;
             }
 
-            return redirect()->route('danhmucDM.detail', $id)
+            return redirect()->route('danhmucDM.index')
                 ->with('success', 'Danh mục đã được cập nhật thành công!');
         });
     }
@@ -177,12 +205,15 @@ class AdminDMController extends Controller
     public function destroy($id)
     {
         $danhmuc = Danhmuc::findOrFail($id);
-
         $sanphamCount = Sanpham::where('id_danhmuc', $danhmuc->id)->count();
 
         if ($sanphamCount > 0) {
             return redirect()->route('danhmucDM.index')
                 ->with('error', 'Danh mục đang có sản phẩm, không thể xóa.');
+        }
+
+        if ($danhmuc->img) {
+            Storage::disk('public')->delete($danhmuc->img);
         }
 
         $danhmuc->delete();
@@ -193,21 +224,30 @@ class AdminDMController extends Controller
 
     public function active($id)
     {
+        Danhmuc::where('id', $id)->update(['anhien' => 1]);
+        return redirect()->route('danhmucDM.index')->with('success', 'Danh mục đã hiện');
+    }
+
+    public function unactive($id)
+    {
         Danhmuc::where('id', $id)->update(['anhien' => 0]);
         return redirect()->route('danhmucDM.index')->with('success', 'Danh mục đã ẩn');
     }
-    public function unactive($id)
+
+    public function toggleStatus($id)
     {
-        Danhmuc::where('id', $id)->update(['anhien' => 1]);
-        return redirect()->route('danhmucDM.index')->with('success', 'Danh mục đã hiện');
+        $danhmuc = Danhmuc::findOrFail($id);
+        $danhmuc->anhien = $danhmuc->anhien == 1 ? 0 : 1;
+        $danhmuc->save();
+
+        $statusText = $danhmuc->anhien == 1 ? 'hiện' : 'ẩn';
+        return redirect()->back()->with('success', "Danh mục đã được $statusText");
     }
 
     public function checkThutu(Request $request)
     {
         $thutu = $request->input('thutu');
-
         $exists = Danhmuc::where('thutu', $thutu)->exists();
-
         return response()->json(['exists' => $exists]);
     }
 }

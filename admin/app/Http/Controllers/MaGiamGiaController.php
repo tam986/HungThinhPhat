@@ -5,62 +5,81 @@ namespace App\Http\Controllers;
 use App\Models\Magiamgia;
 use Illuminate\Http\Request;
 
+use Inertia\Inertia;
+
 class MaGiamGiaController extends Controller
 {
     public function index()
     {
         $magiamgia = Magiamgia::orderBy('thoidiemketthuc', 'desc')->paginate(10);
-        return view('Magiamgia', compact('magiamgia'));
+        
+        return Inertia::render('Coupons/Index', [
+            'coupons' => $magiamgia
+        ]);
     }
     public function create()
     {
         $now = \Carbon\Carbon::now()->format('Y-m-d\TH:i');
-        return view('Magiamgia.Create', compact('now'));
+        return Inertia::render('Coupons/Create', ['now' => $now]);
     }
+
     public function store(Request $request)
     {
         $request->validate([
-            'magiamgia' => 'required|unique:phieugiamgia|max:50',
+            'magiamgia' => 'required|unique:phieugiamgia,magiamgia|max:50',
             'hesogiamgia' => 'required|numeric|min:0',
             'sotientoithieu' => 'required|numeric|min:0',
             'soluong' => 'required|integer|min:0',
             'thoidiembatdau' => 'required|date|after_or_equal:now',
             'thoidiemketthuc' => 'required|date|after:thoidiembatdau',
             'trangthai' => 'required|integer'
+        ], [
+            'thoidiembatdau.after_or_equal' => 'Ngày bắt đầu không được trong quá khứ.',
+            'thoidiemketthuc.after' => 'Ngày kết thúc phải sau ngày bắt đầu.'
         ]);
+
         $data = $request->all();
-        $data['thoidiembatdau'] = date('Y-m-d H:i:s', strtotime($request->thoidiembatdau));
-        $data['thoidiemketthuc'] = date('Y-m-d H:i:s', strtotime($request->thoidiemketthuc));
+        $data['thoidiembatdau'] = \Carbon\Carbon::parse($request->thoidiembatdau)->toDateTimeString();
+        $data['thoidiemketthuc'] = \Carbon\Carbon::parse($request->thoidiemketthuc)->toDateTimeString();
+
         Magiamgia::create($data);
+
         return redirect()->route('magiamgia.index')->with('success', 'Thêm mã giảm giá thành công!');
     }
+
     public function edit($id)
     {
         $magiamgia = Magiamgia::findOrFail($id);
-        return view('Magiamgia.Update', compact('magiamgia'));
+        // Format dates for datetime-local input
+        $magiamgia->thoidiembatdau = \Carbon\Carbon::parse($magiamgia->thoidiembatdau)->format('Y-m-d\TH:i');
+        $magiamgia->thoidiemketthuc = \Carbon\Carbon::parse($magiamgia->thoidiemketthuc)->format('Y-m-d\TH:i');
+        
+        return Inertia::render('Coupons/Edit', ['coupon' => $magiamgia]);
     }
+
     public function update(Request $request, $id)
     {
         $magiamgia = Magiamgia::findOrFail($id);
 
         $request->validate([
+            'magiamgia' => 'required|max:50|unique:phieugiamgia,magiamgia,' . $id,
             'hesogiamgia' => 'required|numeric|min:0',
             'sotientoithieu' => 'required|numeric|min:0',
             'soluong' => 'required|integer|min:0',
             'thoidiembatdau' => 'required|date|after_or_equal:now',
             'thoidiemketthuc' => 'required|date|after:thoidiembatdau',
             'trangthai' => 'required|integer'
+        ], [
+            'thoidiembatdau.after_or_equal' => 'Ngày bắt đầu không được trong quá khứ.',
+            'thoidiemketthuc.after' => 'Ngày kết thúc phải sau ngày bắt đầu.'
         ]);
 
         $data = $request->all();
+        $data['thoidiembatdau'] = \Carbon\Carbon::parse($request->thoidiembatdau)->toDateTimeString();
+        $data['thoidiemketthuc'] = \Carbon\Carbon::parse($request->thoidiemketthuc)->toDateTimeString();
 
-
-        $data['thoidiembatdau'] = date('Y-m-d H:i:s', strtotime($request->thoidiembatdau));
-        $data['thoidiemketthuc'] = date('Y-m-d H:i:s', strtotime($request->thoidiemketthuc));
-
-
-        if (now()->greaterThan($data['thoidiemketthuc'])) {
-            $data['trangthai'] = 1;
+        if (\Carbon\Carbon::now()->greaterThan(\Carbon\Carbon::parse($data['thoidiemketthuc']))) {
+            $data['trangthai'] = 1; // Assuming 1 means expired or inactive
         }
 
         $magiamgia->update($data);
@@ -70,7 +89,7 @@ class MaGiamGiaController extends Controller
 
     public function destroy(string $id)
     {
-        Magiamgia::where('id', $id)->delete();
+        Magiamgia::findOrFail($id)->delete();
         return redirect()->route('magiamgia.index')->with('success', 'Mã giảm giá đã được xóa!');
     }
 }
