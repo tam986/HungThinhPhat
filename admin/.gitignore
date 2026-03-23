@@ -6,7 +6,7 @@
 /.phpunit.result.cache
 # /public/build
 /public/hot
-/public/storage
+# /public/storage
 /storage/*.key
 /storage/debugbar/*.json
 /storage/framework/cache/data/*
@@ -14,7 +14,7 @@
 /storage/framework/testing/*
 /storage/framework/views/*.php
 /storage/logs/*.log
-/storage/app/public/*
+# /storage/app/public/*
 .php_cs.cache
 .phpunit.result.cache
 php_errors.log
