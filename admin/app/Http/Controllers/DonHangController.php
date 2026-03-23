@@ -122,7 +122,7 @@ class DonHangController extends Controller
             $chiTietDonHang = [];
 
             foreach ($validated['order_items'] as $item) {
-                $bienthe = Bienthe::lockForUpdate()->findOrFail($item['id_bienthe']);
+                $bienthe = BienThe::lockForUpdate()->findOrFail($item['id_bienthe']);
                 if ($item['soluong'] > $bienthe->soluong) {
                     throw new \Exception("Sản phẩm {$bienthe->id} không đủ số lượng tồn kho!");
                 }
@@ -181,7 +181,7 @@ class DonHangController extends Controller
 
             foreach ($chiTietDonHang as $ct) {
                 $donhang->donhangchitiet()->create($ct);
-                Bienthe::where('id', $ct['id_bienthe'])->decrement('soluong', $ct['soluong']);
+                BienThe::where('id', $ct['id_bienthe'])->decrement('soluong', $ct['soluong']);
             }
 
             if ($voucher) {

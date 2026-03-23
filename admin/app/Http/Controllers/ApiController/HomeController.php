@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\ApiController;
 
 use App\Models\Baiviet;
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Danhmuc;
 use App\Models\Magiamgia;
 use App\Models\Sanpham;
@@ -19,16 +19,16 @@ class HomeController extends Controller
         $categoryIds = $allCategories->pluck('id');
 
         // Bước 2: 1 query duy nhất lấy bienthes của các danh mục đó (tránh N+1)
-        $allBienthes = Bienthe::with(['sanpham.danhmuc', 'khoiluong', 'nhanbanh'])
+        $allBienThes = BienThe::with(['sanpham.danhmuc', 'khoiluong', 'nhanbanh'])
             ->whereHas('sanpham', fn($q) => $q->whereIn('id_danhmuc', $categoryIds)->where('anhien', 1))
             ->latest()
             ->get();
 
         // Gom nhóm trong PHP (không cần thêm query)
-        $groupedBienthes = $allBienthes->groupBy(fn($bt) => $bt->sanpham?->id_danhmuc ?? 0);
+        $groupedBienThes = $allBienThes->groupBy(fn($bt) => $bt->sanpham?->id_danhmuc ?? 0);
 
-        $productCate = $allCategories->map(function ($category) use ($groupedBienthes) {
-            $bienthes = $groupedBienthes->get($category->id, collect())->take(5);
+        $productCate = $allCategories->map(function ($category) use ($groupedBienThes) {
+            $bienthes = $groupedBienThes->get($category->id, collect())->take(5);
             $category->products = \App\Http\Resources\ProductResource::collection($bienthes);
             return $category;
         });

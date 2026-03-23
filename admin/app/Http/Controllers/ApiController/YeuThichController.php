@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\ApiController;
 
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Yeuthich;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

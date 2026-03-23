@@ -239,7 +239,7 @@ class AdminSPController extends Controller
             $imagePath = $request->file('hinh')->store('uploads/img-sp', 'public');
         }
 
-        $variant = Bienthe::create(array_merge($validated, [
+        $variant = BienThe::create(array_merge($validated, [
             'id_sp' => $id_sp,
             'hinh' => $imagePath,
             'slug' => 'temp-' . uniqid(), // Will update after creation to use full name
@@ -271,7 +271,7 @@ class AdminSPController extends Controller
 
         foreach ($request->variants as $index => $vData) {
             // Check if combination already exists
-            $exists = Bienthe::where('id_sp', $id_sp)
+            $exists = BienThe::where('id_sp', $id_sp)
                 ->where('id_khoiluong', $vData['id_khoiluong'])
                 ->where('id_nhanbanh', $vData['id_nhanbanh'] ?? null)
                 ->exists();
@@ -284,7 +284,7 @@ class AdminSPController extends Controller
                 $imagePath = $request->file("variants.$index.hinh")->store('variants', 'public');
             }
 
-            $variant = Bienthe::create([
+            $variant = BienThe::create([
                 'id_sp' => $id_sp,
                 'id_khoiluong' => $vData['id_khoiluong'],
                 'id_nhanbanh' => $vData['id_nhanbanh'] ?? null,
@@ -307,7 +307,7 @@ class AdminSPController extends Controller
 
     public function updateVariant(Request $request, $id)
     {
-        $variant = Bienthe::findOrFail($id);
+        $variant = BienThe::findOrFail($id);
         $validated = $request->validate([
             'id_khoiluong' => 'required|exists:khoiluongs,id',
             'id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
@@ -332,7 +332,7 @@ class AdminSPController extends Controller
 
     public function destroyVariant($id)
     {
-        $variant = Bienthe::findOrFail($id);
+        $variant = BienThe::findOrFail($id);
         // Optional: delete image file
         if ($variant->hinh && file_exists(storage_path('app/public/' . $variant->hinh))) {
             unlink(storage_path('app/public/' . $variant->hinh));
@@ -420,7 +420,7 @@ class AdminSPController extends Controller
             'nhanbanhs' => $nhanbanhs,
         ]);
     }
-    public function getBienthe(Request $request)
+    public function getBienThe(Request $request)
     {
 
       

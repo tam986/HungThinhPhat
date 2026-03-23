@@ -4,7 +4,7 @@ namespace App\Http\Controllers\ApiController;
 
 use App\Models\BinhLuan;
 use App\Models\Donhang;
-use App\Models\Donhangchitiet;
+use App\Models\DonHangChiTiet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;

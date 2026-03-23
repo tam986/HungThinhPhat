@@ -4,7 +4,7 @@ namespace App\Http\Controllers\ApiController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Sanpham;
 use App\Models\Magiamgia;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +26,7 @@ class GiohangController extends Controller
                 continue;
             }
 
-            $bienthe = Bienthe::find($item['id_bienthe']);
+            $bienthe = BienThe::find($item['id_bienthe']);
             if ($bienthe) {
                 $item['soluong_tonkho'] = $bienthe->soluong;
             } else {
@@ -54,7 +54,7 @@ class GiohangController extends Controller
             'soluong' => 'required|integer|min:1'
         ]);
 
-        $bienthe = Bienthe::with(['sanpham', 'nhanbanh', 'khoiluong'])
+        $bienthe = BienThe::with(['sanpham', 'nhanbanh', 'khoiluong'])
             ->findOrFail($request->id_bienthe);
 
         $cart = Session::get('cart', []);
@@ -128,7 +128,7 @@ class GiohangController extends Controller
             return response()->json(['success' => false, 'message' => 'Giỏ hàng không hợp lệ.'], 400);
         }
 
-        $bienthe = Bienthe::findOrFail($id_bienthe);
+        $bienthe = BienThe::findOrFail($id_bienthe);
 
         $found = false;
         foreach ($cart as &$item) {
@@ -233,7 +233,7 @@ class GiohangController extends Controller
         $items = $request->input('items');
         $bientheIds = array_column($items, 'id_bienthe');
         
-        $bienthes = Bienthe::whereIn('id', $bientheIds)->get()->keyBy('id');
+        $bienthes = BienThe::whereIn('id', $bientheIds)->get()->keyBy('id');
 
         $result = [];
         $hasErrors = false;

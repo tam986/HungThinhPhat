@@ -7,7 +7,7 @@ use App\Models\Danhmuc;
 use App\Models\DanhMucBaiViet;
 use App\Models\Donhang;
 use App\Models\Sanpham;
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\DonHangChiTiet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -51,7 +51,7 @@ class DashBoardController extends Controller
             ->take(10)
             ->get(['id', 'tennguoinhan', 'phone', 'thanhtien', 'trangthai', 'created_at']);
 
-        $lowStockVariants = Bienthe::with(['sanpham', 'loaibanh', 'khoiluong', 'nhanbanh'])
+        $lowStockVariants = BienThe::with(['sanpham', 'loaibanh', 'khoiluong', 'nhanbanh'])
             ->where('soluong', '<', 10)
             ->orderBy('soluong', 'asc')
             ->take(5)

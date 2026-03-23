@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\ApiController;
 
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Danhmuc;
 use App\Models\Sanpham;
 use App\Models\Nhacungcap;
@@ -17,7 +17,7 @@ class SanphamController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Bienthe::with(['sanpham.danhmuc', 'sanpham.nhacungcap', 'khoiluong', 'nhanbanh'])
+        $query = BienThe::with(['sanpham.danhmuc', 'sanpham.nhacungcap', 'khoiluong', 'nhanbanh'])
             ->whereHas('sanpham', function($q) {
                 $q->where('anhien', 1);
             });
@@ -84,14 +84,14 @@ class SanphamController extends Controller
      */
     public function detail($slug)
     {
-        $variant = Bienthe::with(['sanpham.danhmuc', 'sanpham.nhacungcap', 'khoiluong', 'nhanbanh'])
+        $variant = BienThe::with(['sanpham.danhmuc', 'sanpham.nhacungcap', 'khoiluong', 'nhanbanh'])
             ->where('slug', $slug)
             ->firstOrFail();
 
         $product = $variant->sanpham;
         
         // Variants for attribute matrix
-        $variants = Bienthe::with(['khoiluong', 'nhanbanh'])
+        $variants = BienThe::with(['khoiluong', 'nhanbanh'])
             ->where('id_sp', $product->id)
             ->get();
 
@@ -132,7 +132,7 @@ class SanphamController extends Controller
             'variants' => $transformedVariants,
             'sibling_products' => $siblings->map(function($s) {
                 // Get the best variant to build the link (e.g. simplest or featured)
-                $v = Bienthe::where('id_sp', $s->id)->orderBy('gia', 'asc')->first();
+                $v = BienThe::where('id_sp', $s->id)->orderBy('gia', 'asc')->first();
                 return [
                     'id' => $s->id,
                     'tensp' => $s->tensp,
@@ -150,7 +150,7 @@ class SanphamController extends Controller
      */
     public function latest()
     {
-        $variants = Bienthe::with(['sanpham.danhmuc'])
+        $variants = BienThe::with(['sanpham.danhmuc'])
             ->whereHas('sanpham', function($q) {
                 $q->where('anhien', 1);
             })
@@ -166,7 +166,7 @@ class SanphamController extends Controller
      */
     public function sale()
     {
-        $variants = Bienthe::with(['sanpham.danhmuc', 'khoiluong', 'nhanbanh'])
+        $variants = BienThe::with(['sanpham.danhmuc', 'khoiluong', 'nhanbanh'])
             ->where('giakm', '>', 0)
             ->whereColumn('giakm', '<', 'gia')
             ->whereHas('sanpham', function($q) {
@@ -191,7 +191,7 @@ class SanphamController extends Controller
             'id_nhanbanh' => 'nullable|exists:nhanbanhs,id',
         ]);
 
-        $variant = Bienthe::where('id_sp', $validated['id_sp'])
+        $variant = BienThe::where('id_sp', $validated['id_sp'])
             ->where('id_loaibanh', $validated['id_loaibanh'])
             ->where('id_khoiluong', $validated['id_khoiluong'])
             ->where('id_nhanbanh', $validated['id_nhanbanh'] ?? null)

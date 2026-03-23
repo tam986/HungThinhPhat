@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\ApiController;
 
 use App\Models\Baiviet;
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Danhmuc;
 use App\Models\DanhMucBaiViet;
 use App\Models\Nhacungcap;
@@ -16,7 +16,7 @@ class SearchController extends Controller
     {
         $kyw = $request->input('query');
 
-        $bienthes = Bienthe::with([
+        $bienthes = BienThe::with([
             'sanpham.danhmuc',
             'sanpham.nhacungcap',
             'khoiluong',

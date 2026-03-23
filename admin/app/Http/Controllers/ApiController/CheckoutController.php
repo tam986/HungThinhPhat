@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\ApiController;
 
-use App\Models\Bienthe;
+use App\Models\BienThe;
 use App\Models\Donhang;
-use App\Models\Donhangchitiet;
+use App\Models\DonHangChiTiet;
 use App\Models\Magiamgia;
 use App\Models\Setting;
 use App\Models\ThanhToan; 
@@ -178,7 +178,7 @@ class CheckoutController extends Controller
         ]);
 
         foreach ($cart as $item) {
-            Donhangchitiet::create([
+            DonHangChiTiet::create([
                 'id_donhang' => $order->id,
                 'id_bienthe' => $item['id_bienthe'],
                 'soluong'    => $item['soluong'],
