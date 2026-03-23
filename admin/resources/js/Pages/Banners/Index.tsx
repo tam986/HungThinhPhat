@@ -53,9 +53,9 @@ export default function BannerIndex({ banners }: Props) {
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <MetricCard title="Têng s? Banner" value={banners.length} icon={ImageIcon} />
-        <MetricCard title="Đang hiện th?" value={banners.filter(b => b.anhien === 1).length} icon={Eye} />
-        <MetricCard title="Đang ơn" value={banners.filter(b => b.anhien === 0).length} icon={EyeOff} />
+        <MetricCard title="Tổng số Banner" value={banners.length} icon={ImageIcon} />
+        <MetricCard title="Đang hiển thị" value={banners.filter(b => b.anhien === 1).length} icon={Eye} />
+        <MetricCard title="Đang ẩn" value={banners.filter(b => b.anhien === 0).length} icon={EyeOff} />
       </div>
 
       {/* Banner Grid */}
@@ -81,7 +81,7 @@ export default function BannerIndex({ banners }: Props) {
                       ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
                       : "bg-slate-500/10 text-slate-500 border-slate-500/20"
                   )}>
-                    {banner.anhien === 1 ? 'Hiện th?' : 'Đang ơn'}
+                    {banner.anhien === 1 ? 'Hiện thị' : 'Đang ẩn'}
                   </span>
                   <span className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md bg-white/70 text-slate-700 border border-white/20">
                     Sắp xếp: {banner.thutu}
@@ -93,7 +93,7 @@ export default function BannerIndex({ banners }: Props) {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-slate-900 truncate text-dark">
-                    {banner.tieude || "Không c? tiêu Đã"}
+                    {banner.tieude || "Không có tiêu đề"}
                   </h3>
                   {banner.duongdan && (
                     <div className="flex items-center gap-1.5 mt-1 text-slate-500">
@@ -127,7 +127,7 @@ export default function BannerIndex({ banners }: Props) {
                   href={route('banners.destroy', banner.id)} 
                   method="delete"
                   as="button"
-                  onBefore={() => confirm('Bạn c? chắc muốn xóa banner này?')}
+                  onBefore={() => confirm('Bạn có chắc chắn muốn xóa banner này?')}
                   className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-50 rounded-lg border border-slate-100 transition-colors"
                 >
                   <Trash2 size={18} />
@@ -140,8 +140,8 @@ export default function BannerIndex({ banners }: Props) {
         {banners.length === 0 && (
           <div className="col-span-full py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
              <ImageIcon size={48} className="mb-4 opacity-20" />
-             <p className="font-medium">Chưa c? banner nào</p>
-             <Link href={route('banners.create')} className="text-primary hover:underline text-sm mt-1">Bấm Đã thêm ngay</Link>
+             <p className="font-medium">Chưa có banner nào</p>
+             <Link href={route('banners.create')} className="text-primary hover:underline text-sm mt-1">Bấm để thêm ngay</Link>
           </div>
         )}
       </div>
