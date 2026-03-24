@@ -3,7 +3,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { ChevronRight } from "lucide-react";
 import type { Metadata } from "next";
 
-import { fetchHomeData, fetchBlogPosts, fetchPartners, fetchBanners, fetchSaleProducts, fetchNavTree, fetchVouchers } from "@/services/api";
+import { fetchHomeData, fetchBlogPosts, fetchPartners, fetchBanners, fetchSaleProducts, fetchNavTree, fetchVouchers, getStorageUrl } from "@/services/api";
 import Link from "next/link";
 import { CategorySection } from "@/components/home/CategorySection";
 import { ProductSliderSection } from "@/components/home/ProductSliderSection";
@@ -41,12 +41,6 @@ export default async function Home() {
   const latestProducts = (homeData?.productCate || []).flatMap((c: any) => c.products || []).slice(0, 8);
   const saleProducts = Array.isArray(saleProductsRes) ? saleProductsRes : (saleProductsRes?.data || []);
   const blogs = Array.isArray(blogsRes) ? blogsRes : (blogsRes?.baivietMoi || blogsRes?.data || []);
-
-  const getImageUrl = (path: string) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
-  };
 
   return (
     <div className="min-h-screen pb-20">

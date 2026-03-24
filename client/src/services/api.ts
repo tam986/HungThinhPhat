@@ -1,4 +1,13 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+export const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api$/, "/storage");
+
+export function getStorageUrl(path: string) {
+    if (!path) return "/placeholder.jpg";
+    if (path.startsWith("http")) return path;
+    // Remove leading slash if exists
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    return `${STORAGE_BASE_URL}/${cleanPath}`;
+}
 
 // -- Reusable fetch helper with ISR support --
 async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate?: number }): Promise<T> {
@@ -6,26 +15,33 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
     const cacheOpt: RequestInit = revalidate != null
         ? { next: { revalidate } }
         : { cache: "no-store" };
-    const res = await fetch(`${API_BASE_URL}${path}`, { ...cacheOpt, ...rest });
-    if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
-    return res.json();
+    try {
+        const res = await fetch(`${API_BASE_URL}${path}`, { ...cacheOpt, ...rest });
+        if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
+        return res.json();
+    } catch (err) {
+        console.error(`Fetch error for ${path}:`, err);
+        // During build time, we might want to return a fallback instead of crashing
+        if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
+            // Basic fallback for build-time safety
+            return {} as T;
+        }
+        throw err;
+    }
 }
 
 // ---------- Products ----------
 
 export async function fetchProducts(search?: string, category?: string[], supplier?: number, page: number = 1, product?: string[], type?: string[]) {
-    const url = new URL(`${API_BASE_URL}/products`);
-    if (search) url.searchParams.append("search", search);
-    if (category && category.length > 0) url.searchParams.append("category", category.join(","));
-    if (product && product.length > 0) url.searchParams.append("product", product.join(","));
-    if (type && type.length > 0) url.searchParams.append("type", type.join(","));
-    if (supplier) url.searchParams.append("supplier", supplier.toString());
-    if (page > 1) url.searchParams.append("page", page.toString());
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (category && category.length > 0) params.append("category", category.join(","));
+    if (product && product.length > 0) params.append("product", product.join(","));
+    if (type && type.length > 0) params.append("type", type.join(","));
+    if (supplier) params.append("supplier", supplier.toString());
+    if (page > 1) params.append("page", page.toString());
 
-    // Dynamic (filters change per user) – no store
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to fetch products");
-    return res.json();
+    return apiFetch(`/products?${params.toString()}`, { cache: "no-store" });
 }
 
 export async function fetchProductDetail(slug: string) {
@@ -120,7 +136,7 @@ export async function fetchVouchers() {
 
 export async function processCheckout(payload: any) {
     try {
-        const res = await fetch(`${API_BASE_URL}/checkout/process`, {
+        return await apiFetch("/checkout/process", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -128,14 +144,6 @@ export async function processCheckout(payload: any) {
             },
             body: JSON.stringify(payload),
         });
-        const data = await res.json();
-        if (!res.ok) {
-            return {
-                success: false,
-                error: typeof data.error === 'string' ? data.error : (data.message || "Lỗi khi xử lý thanh toán")
-            };
-        }
-        return data;
     } catch (err) {
         console.error("Checkout process failed:", err);
         return { success: false, error: "Không thể kết nối đến máy chủ." };
@@ -147,21 +155,13 @@ export async function uploadOrderProof(file: File) {
         const formData = new FormData();
         formData.append("file", file);
 
-        const res = await fetch(`${API_BASE_URL}/checkout/upload`, {
+        return await apiFetch("/checkout/upload", {
             method: "POST",
             headers: {
                 Accept: "application/json",
             },
             body: formData,
         });
-        const data = await res.json();
-        if (!res.ok) {
-            return {
-                success: false,
-                error: typeof data.error === 'string' ? data.error : (data.message || "Lỗi khi tải ảnh")
-            };
-        }
-        return data;
     } catch (err) {
         console.error("Upload proof failed:", err);
         return { success: false, error: "Lỗi kết nối khi tải ảnh." };
@@ -171,7 +171,7 @@ export async function uploadOrderProof(file: File) {
 // ---------- Cart ----------
 
 export async function validateCartStock(items: { id_bienthe: number | string; quantity: number }[]) {
-    const res = await fetch(`${API_BASE_URL}/cart/validate`, {
+    return apiFetch("/cart/validate", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -179,7 +179,6 @@ export async function validateCartStock(items: { id_bienthe: number | string; qu
         },
         body: JSON.stringify({ items }),
     });
-    return res.json();
 }
 
 export async function fetchOrderDetail(id: string | number) {
