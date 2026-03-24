@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { fetchBlogPostDetail } from "@/services/api";
+import { fetchBlogPostDetail, getStorageUrl } from "@/services/api";
+
+export const dynamic = "force-dynamic";
 import { BlogCard } from "@/components/blog/BlogCard";
 import type { Metadata } from "next";
 
@@ -19,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: data.baiviet.tieude,
         description: data.baiviet.tomtat,
-        images: [`http://127.0.0.1:8000/storage/${data.baiviet.anhdaidien}`]
+        images: [getStorageUrl(data.baiviet.anhdaidien)]
       }
     };
   } catch {
@@ -43,9 +45,7 @@ export default async function SingleBlogPage({ params }: Props) {
   const { baiviet: post, baivietLienQuan: relatedPosts } = data;
 
   const getImageUrl = (path: string | undefined) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
+    return getStorageUrl(path || "");
   };
 
   const formattedDate = post.created_at

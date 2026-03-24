@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { BlogClient } from "@/components/blog/BlogClient";
+import { API_BASE_URL } from "@/services/api";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Blog – Hưng Thịnh Phát",
@@ -13,7 +16,7 @@ export const metadata: Metadata = {
 
 async function getBlogData() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/baiviet", { next: { revalidate: 300 } });
+    const res = await fetch(`${API_BASE_URL}/baiviet`, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     return res.json();
   } catch (error) {

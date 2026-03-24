@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   keywords: ["đặc sản miền tây", "bánh kẹo miền tây", "khô cá", "mứt", "hưng thịnh phát"],
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function ProductsPage() {
   const [categories, vouchers] = await Promise.all([
     fetchCategories(),

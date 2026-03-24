@@ -3,11 +3,13 @@ import { Droplet, Sun, Clock } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
 import ProductSelection from "@/components/product/ProductSelection";
 import { VoucherSection } from "@/components/vouchers/VoucherSection";
-import { fetchVouchers } from "@/services/api";
+import { fetchVouchers, API_BASE_URL, getStorageUrl } from "@/services/api";
+
+export const dynamic = "force-dynamic";
 
 async function getProduct(slug: string) {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/sanpham/${slug}`, {
+    const res = await fetch(`${API_BASE_URL}/sanpham/${slug}`, {
       next: { revalidate: 300 }, // ISR: 5 minutes
     });
     if (!res.ok) return null;
@@ -24,9 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const product = data?.product;
   if (!product) return { title: "Sản phẩm không tồn tại" };
 
-  const imageUrl = product.img
-    ? product.img.startsWith("http") ? product.img : `http://127.0.0.1:8000/storage/${product.img}`
-    : undefined;
+  const imageUrl = getStorageUrl(product.img || "");
 
   return {
     title: `${product.tensp} – Hưng Thịnh Phát`,
