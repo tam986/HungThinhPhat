@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const [homeData, blogsRes, banners, partners, saleProductsRes, navTree, vouchers] = await Promise.all([
     fetchHomeData(),
