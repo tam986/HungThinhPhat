@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
+import { API_BASE_URL, getStorageUrl } from "@/services/api";
 
 export function NavbarSearch() {
   const [query, setQuery] = useState("");
@@ -24,7 +25,7 @@ export function NavbarSearch() {
 
       setIsLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/sanpham?search=${encodeURIComponent(debouncedQuery)}`);
+        const res = await fetch(`${API_BASE_URL}/sanpham?search=${encodeURIComponent(debouncedQuery)}`);
         if (res.ok) {
           const data = await res.json();
           // The API returns { bienthes: { data: [...] }, ... }
@@ -53,11 +54,7 @@ export function NavbarSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getImageUrl = (path: string) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `${process.env.NEXT_PUBLIC_API_URL}/storage/${path}`;
-  };
+  const getImageUrl = (path: string) => getStorageUrl(path);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);

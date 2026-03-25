@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ArrowRight, AlertCircle, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
-import { validateCartStock } from "@/services/api";
+import { validateCartStock, getStorageUrl } from "@/services/api";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -64,11 +64,7 @@ export default function Cart() {
     }).format(price);
   };
 
-  const getImageUrl = (path?: string) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
-  };
+  const getImageUrl = (path?: string) => getStorageUrl(path || "");
 
   if (!hasItems) {
      return (

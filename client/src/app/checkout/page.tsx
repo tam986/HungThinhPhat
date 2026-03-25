@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Building2, Truck, Upload as UploadIcon, CheckCircle2 } from "lucide-react";
-import { fetchBankSettings, uploadOrderProof, processCheckout } from "@/services/api";
+import { fetchBankSettings, uploadOrderProof, processCheckout, getStorageUrl } from "@/services/api";
 
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -112,11 +112,7 @@ export default function Checkout() {
     }
   };
 
-  const getImageUrl = (path: string) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
-  };
+  const getImageUrl = (path: string) => getStorageUrl(path);
 
   const handleUpload = async (options: any) => {
     const { file, onSuccess, onError } = options;

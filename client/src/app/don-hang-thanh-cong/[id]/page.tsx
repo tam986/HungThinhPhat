@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Package, ArrowRight, Home, Building2, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { fetchBankSettings } from "@/services/api";
+import { fetchBankSettings, getStorageUrl } from "@/services/api";
 import { toast } from "sonner";
 
 export default function OrderSuccess() {
@@ -50,11 +50,7 @@ export default function OrderSuccess() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const getImageUrl = (path: string) => {
-    if (!path) return "/placeholder.jpg";
-    if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
-  };
+  const getImageUrl = (path: string) => getStorageUrl(path);
 
   return (
     <div className="container mx-auto px-4 py-24 min-h-screen flex items-center justify-center">
