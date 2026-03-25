@@ -1,8 +1,11 @@
 // -- Base URL Configuration --
 const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-// Normalize: Remove trailing slashes and ensure it ends with /api for consistency if needed, 
-// but here we just ensure no trailing slash so we can safely append path starting with /
-export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
+// Normalize: Ensure it ends with /api if it's pointing to the root domain
+let normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
+if (!normalizedBaseUrl.endsWith("/api") && !normalizedBaseUrl.includes("localhost") && !normalizedBaseUrl.includes("127.0.0.1")) {
+    normalizedBaseUrl = `${normalizedBaseUrl}/api`;
+}
+export const API_BASE_URL = normalizedBaseUrl;
 
 // Derive storage URL by replacing /api at the end with /storage, or appending /storage if /api not present
 export const STORAGE_BASE_URL = API_BASE_URL.endsWith("/api")
@@ -78,7 +81,7 @@ export async function fetchProductDetail(slug: string) {
 
 export async function fetchSaleProducts() {
     // ISR: revalidate every 2 minutes
-    return apiFetch("/products/sale", { revalidate: 120 });
+    return apiFetch("/sanpham/sale", { revalidate: 120 });
 }
 
 /** Returns nav tree: Category > Product > Types */
@@ -89,7 +92,7 @@ export async function fetchNavTree() {
 /** Returns danhmucs[] – use HomeData instead where possible */
 export async function fetchCategories() {
     // ISR: categories change rarely
-    const data = await apiFetch("/categories", { revalidate: 300 });
+    const data = await apiFetch("/danhmuc", { revalidate: 300 });
     return data;
 }
 
@@ -99,6 +102,8 @@ export async function fetchHomeData() {
     // ISR: revalidate every 2 minutes
     return apiFetch("/", { revalidate: 10 });
 }
+
+// ---------- Blog ----------
 
 // ---------- Blog ----------
 
