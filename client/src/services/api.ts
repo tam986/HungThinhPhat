@@ -1,10 +1,17 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-export const STORAGE_BASE_URL = API_BASE_URL.replace(/\/api$/, "/storage");
+// -- Base URL Configuration --
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
+// Normalize: Remove trailing slashes and ensure it ends with /api for consistency if needed, 
+// but here we just ensure no trailing slash so we can safely append path starting with /
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
+
+// Derive storage URL by replacing /api at the end with /storage, or appending /storage if /api not present
+export const STORAGE_BASE_URL = API_BASE_URL.endsWith("/api")
+    ? API_BASE_URL.replace(/\/api$/, "/storage")
+    : `${API_BASE_URL}/storage`;
 
 export function getStorageUrl(path: string) {
     if (!path) return "/placeholder.jpg";
     if (path.startsWith("http")) return path;
-    // Remove leading slash if exists
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
     return `${STORAGE_BASE_URL}/${cleanPath}`;
 }
@@ -15,17 +22,29 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
     const cacheOpt: RequestInit = revalidate != null
         ? { next: { revalidate } }
         : { cache: "no-store" };
+
+    const url = `${API_BASE_URL}${path}`;
+
     try {
-        const res = await fetch(`${API_BASE_URL}${path}`, { ...cacheOpt, ...rest });
-        if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
-        return res.json();
-    } catch (err) {
-        console.error(`Fetch error for ${path}:`, err);
-        // During build time, we might want to return a fallback instead of crashing
-        if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PHASE) {
-            // Basic fallback for build-time safety
-            return {} as T;
+        const res = await fetch(url, { ...cacheOpt, ...rest });
+        if (!res.ok) {
+            console.error(`API ${path} failed with status: ${res.status}`);
+            throw new Error(`API ${path} failed: ${res.status}`);
         }
+        return await res.json();
+    } catch (err) {
+        console.error(`Fetch error for ${url}:`, err);
+
+        // CRITICAL: Prevent server-side crash during SSR/ISR
+        // If we are in production and it's a server-side execution, return a safe fallback
+        if (process.env.NODE_ENV === 'production') {
+            return {
+                success: false,
+                message: "Không thể kết nối đến máy chủ.",
+                data: Array.isArray({} as T) ? [] : {},
+            } as any;
+        }
+
         throw err;
     }
 }
@@ -41,12 +60,12 @@ export async function fetchProducts(search?: string, category?: string[], suppli
     if (supplier) params.append("supplier", supplier.toString());
     if (page > 1) params.append("page", page.toString());
 
-    return apiFetch(`/products?${params.toString()}`, { cache: "no-store" });
+    return apiFetch(`/sanpham?${params.toString()}`, { cache: "no-store" });
 }
 
 export async function fetchProductDetail(slug: string) {
     // ISR: revalidate every 5 minutes – product data rarely changes
-    return apiFetch(`/products/${slug}`, { revalidate: 300 });
+    return apiFetch(`/sanpham/${slug}`, { revalidate: 300 });
 }
 
 export async function fetchSaleProducts() {
@@ -77,7 +96,7 @@ export async function fetchHomeData() {
 
 export async function fetchBlogPosts() {
     // ISR: revalidate every 5 minutes
-    return apiFetch("/posts", { revalidate: 300 });
+    return apiFetch("/baiviet", { revalidate: 300 });
 }
 
 export async function fetchBlogPostDetail(slug: string) {

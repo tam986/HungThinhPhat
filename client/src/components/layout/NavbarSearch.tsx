@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
-import { API_BASE_URL, getStorageUrl } from "@/services/api";
+import { fetchProducts, getStorageUrl } from "@/services/api";
 
 export function NavbarSearch() {
   const [query, setQuery] = useState("");
@@ -25,14 +25,11 @@ export function NavbarSearch() {
 
       setIsLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/sanpham?search=${encodeURIComponent(debouncedQuery)}`);
-        if (res.ok) {
-          const data = await res.json();
-          // The API returns { bienthes: { data: [...] }, ... }
-          const items = data.bienthes?.data || [];
-          setResults(items);
-          setIsOpen(true);
-        }
+        const data = await fetchProducts(debouncedQuery);
+        // The API returns { bienthes: { data: [...] }, ... } via fetchProducts
+        const items = data.bienthes?.data || [];
+        setResults(items);
+        setIsOpen(true);
       } catch (error) {
         console.error("Search failed:", error);
       } finally {

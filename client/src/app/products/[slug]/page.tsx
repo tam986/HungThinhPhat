@@ -3,26 +3,15 @@ import { Droplet, Sun, Clock } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
 import ProductSelection from "@/components/product/ProductSelection";
 import { VoucherSection } from "@/components/vouchers/VoucherSection";
-import { fetchVouchers, API_BASE_URL, getStorageUrl } from "@/services/api";
+import { fetchVouchers, fetchProductDetail, getStorageUrl } from "@/services/api";
 
 export const dynamic = "force-dynamic";
 
-async function getProduct(slug: string) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/sanpham/${slug}`, {
-      next: { revalidate: 300 }, // ISR: 5 minutes
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch (error) {
-    console.error("Failed to fetch product:", error);
-    return null;
-  }
-}
+// Note: We use fetchProductDetail which already includes normalization and error handling
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getProduct(slug);
+  const data = await fetchProductDetail(slug);
   const product = data?.product;
   if (!product) return { title: "Sản phẩm không tồn tại" };
 
@@ -43,7 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [data, vouchers] = await Promise.all([
-    getProduct(slug),
+    fetchProductDetail(slug),
     fetchVouchers()
   ]);
 
