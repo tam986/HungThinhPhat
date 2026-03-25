@@ -30,7 +30,7 @@ export default function HotCategories({ categories }: { categories: Category[] }
     if (imgUrl) return imgUrl;
     if (!img) return "/placeholder.jpg";
     if (img.startsWith("http")) return img;
-    return `http://127.0.0.1:8000/storage/${img}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/storage/${img}`;
   };
 
   return (

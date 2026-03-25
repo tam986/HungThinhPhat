@@ -33,7 +33,7 @@ export function BlogHero({ posts }: BlogHeroProps) {
   const getImageUrl = (path: string | undefined) => {
     if (!path) return "/placeholder.jpg";
     if (path.startsWith("http")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/storage/${path}`;
   };
 
   return (
