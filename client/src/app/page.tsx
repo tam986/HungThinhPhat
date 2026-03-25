@@ -38,11 +38,25 @@ export default async function Home() {
     fetchVouchers()
   ]);
 
-  // Homepage uses homeData.productCate for category sections
-  // and the /products/latest + /products/sale for slider sections
-  const latestProducts = (homeData?.productCate || []).flatMap((c: any) => c.products || []).slice(0, 8);
-  const saleProducts = Array.isArray(saleProductsRes) ? saleProductsRes : (saleProductsRes?.data || []);
-  const blogs = Array.isArray(blogsRes) ? blogsRes : (blogsRes?.baivietMoi || blogsRes?.data || []);
+  // Defensive data extraction to prevent SSR crashes if API fails
+  const latestProducts = (homeData?.productCate && Array.isArray(homeData.productCate) ? homeData.productCate : [])
+    .flatMap((c: any) => (c.products && Array.isArray(c.products) ? c.products : []))
+    .slice(0, 8);
+    
+  const saleProducts = Array.isArray(saleProductsRes) 
+    ? saleProductsRes 
+    : (saleProductsRes?.data && Array.isArray(saleProductsRes.data) ? saleProductsRes.data : []);
+    
+  const blogs = Array.isArray(blogsRes) 
+    ? blogsRes 
+    : (blogsRes?.baivietMoi && Array.isArray(blogsRes.baivietMoi) ? blogsRes.baivietMoi : (blogsRes?.data && Array.isArray(blogsRes.data) ? blogsRes.data : []));
+
+  const safeBanners = Array.isArray(banners) ? banners : [];
+  const safePartners = Array.isArray(partners) ? partners : [];
+  const safeNavTree = Array.isArray(navTree) ? navTree : [];
+  const safeVouchers = Array.isArray(vouchers) ? vouchers : [];
+  const safeHotCategories = (homeData?.danhmucs && Array.isArray(homeData.danhmucs)) ? homeData.danhmucs : [];
+  const safeCategorySections = (homeData?.productCate && Array.isArray(homeData.productCate)) ? homeData.productCate : [];
 
   return (
     <div className="min-h-screen pb-20">
@@ -50,16 +64,16 @@ export default async function Home() {
         {/* Hero Section */}
         <section className="flex flex-col lg:flex-row gap-6 lg:h-[450px]">
           {/* Left Category Sidebar (Mega Menu) */}
-          <HomeSidebar navTree={navTree} />
+          <HomeSidebar navTree={safeNavTree} />
 
           {/* Right Banner Slider */}
           <div className="flex-1 overflow-hidden h-full" style={{ minWidth: 0 }}>
-            <BannerCarousel banners={banners} />
+            <BannerCarousel banners={safeBanners} />
           </div>
         </section>
 
         {/* Voucher Section */}
-        <VoucherSection vouchers={vouchers} />
+        <VoucherSection vouchers={safeVouchers} />
 
         {/* Hot Categories Section */}
         <section className="space-y-8">
@@ -70,11 +84,11 @@ export default async function Home() {
             </Link>
           </div>
           
-          <HotCategories categories={homeData?.danhmucs || []} />
+          <HotCategories categories={safeHotCategories} />
         </section>
 
         {/* Category Section */}
-        <CategorySection categories={homeData?.productCate || []} />
+        <CategorySection categories={safeCategorySections} />
 
         {/* New Products */}
         <ProductSliderSection title="Sản phẩm mới" products={latestProducts} />
@@ -86,7 +100,7 @@ export default async function Home() {
         <BlogSection posts={blogs} />
 
         {/* Partners */}
-        <PartnerSection partners={partners} />
+        <PartnerSection partners={safePartners} />
 
         {/* Services */}
         <ServiceSection />

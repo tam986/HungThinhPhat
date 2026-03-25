@@ -41,7 +41,15 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
             return {
                 success: false,
                 message: "Không thể kết nối đến máy chủ.",
-                data: Array.isArray({} as T) ? [] : {},
+                data: [],
+                bienthes: { data: [] },
+                productCate: [],
+                baivietMoi: [],
+                danhmucs: [],
+                product: null,
+                variants: [],
+                available_weights: [],
+                available_fillings: [],
             } as any;
         }
 

@@ -31,21 +31,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProductDetail({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [data, vouchers] = await Promise.all([
+  const [dataRes, vouchersRes] = await Promise.all([
     fetchProductDetail(slug),
     fetchVouchers()
   ]);
 
+  const data = dataRes || {};
+  const vouchers = Array.isArray(vouchersRes) ? vouchersRes : (vouchersRes?.data || []);
+
   if (!data || !data.product) {
     return (
       <div className="container py-32 text-center text-red-500 font-bold">
-        Sản phẩm không tồn tại.
+        Sản phẩm không tồn tại hoặc lỗi kết nối.
       </div>
     );
   }
 
   const { 
-    product, 
+    product = {}, 
     variants = [], 
     available_weights = [], 
     available_fillings = [], 

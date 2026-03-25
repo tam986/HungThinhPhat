@@ -16,10 +16,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ProductsPage() {
-  const [categories, vouchers] = await Promise.all([
+  const [categoriesRes, vouchersRes] = await Promise.all([
     fetchCategories(),
     fetchVouchers()
   ]);
   
-  return <ProductsClientWrapper categories={categories} vouchers={vouchers} />;
+  const safeCategories = Array.isArray(categoriesRes) ? categoriesRes : (categoriesRes?.data || []);
+  const safeVouchers = Array.isArray(vouchersRes) ? vouchersRes : (vouchersRes?.data || []);
+
+  return <ProductsClientWrapper categories={safeCategories} vouchers={safeVouchers} />;
 }
