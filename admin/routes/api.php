@@ -113,8 +113,8 @@ Route::controller(CheckoutController::class)->group(function () {
 Route::post('/binhluan/create', [BinhLuanController::class, 'store'])->name('binhluan.store');
 
 // Public API routes for Next.js Client
-Route::get('/navigation-tree', [CategoryController::class, 'tree']);
-Route::get('/categories', [CategoryController::class, 'index']);
+Route::match(['get', 'post'], '/navigation-tree', [CategoryController::class, 'tree']);
+Route::match(['get', 'post'], '/categories', [CategoryController::class, 'index']);
 Route::get('/partners', [PartnerController::class, 'index']);
 Route::get('/partners', [PartnerController::class, 'index']);
 

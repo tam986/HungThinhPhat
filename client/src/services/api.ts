@@ -29,9 +29,9 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     const url = `${API_BASE_URL}${cleanPath}`.replace(/\/+$/, "");
 
-    const headers = {
+    const headers: Record<string, string> = {
         'Accept': 'application/json',
-        ...rest.headers,
+        ...(rest.headers as Record<string, string> || {}),
     };
 
     try {
