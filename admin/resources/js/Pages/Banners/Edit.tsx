@@ -103,7 +103,7 @@ export default function EditBanner({ banner }: Props) {
               <div>
                 <label className="block text-sm font-semibold mb-1.5 text-slate-700 flex items-center gap-2">
                   <ExternalLink size={16} className="text-slate-400" />
-                  Đư?ơng dẫn (URL)
+                  Đường dẫn (URL)
                 </label>
                 <input 
                   type="text"
@@ -113,7 +113,7 @@ export default function EditBanner({ banner }: Props) {
                     "w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all outline-none",
                     errors.duongdan && "border-red-500 ring-red-500/10"
                   )}
-                  placeholder="Về dụ: /san-pham-khuyen-mai"
+                  placeholder="Ví dụ: /san-pham-khuyen-mai"
                 />
                 {errors.duongdan && <p className="text-red-500 text-xs mt-1">{errors.duongdan}</p>}
               </div>
@@ -158,7 +158,7 @@ export default function EditBanner({ banner }: Props) {
                 href={route('banners.index')}
                 className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all"
               >
-                Hủy bĐã
+                Hủy bỏ
               </Link>
               <button
                 type="submit"
@@ -217,7 +217,7 @@ export default function EditBanner({ banner }: Props) {
               
               <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100">
                  <p className="text-[10px] text-amber-700 leading-relaxed font-medium">
-                   Mẹo: Ảnh banner nên cĐã tỉ lệ 16:9 hoặc theo kịch thước chuẩn của website để hiển thị đẹp nhất.
+                   Mẹo: Ảnh banner nên có tỉ lệ 16:9 hoặc theo kích thước chuẩn của website để hiển thị đẹp nhất.
                  </p>
               </div>
             </div>

@@ -95,7 +95,7 @@ export default function BannerCreate() {
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                       <LinkIcon size={16} className="text-slate-400" />
-                      Đư?ơng dẫn (URL)
+                      Đường dẫn (URL)
                     </label>
                     <input 
                       type="text" 

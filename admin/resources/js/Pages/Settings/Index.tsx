@@ -64,7 +64,7 @@ export default function SettingsIndex({ settings }: Props) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 text-dark">Cấu hình hệ thống</h1>
           <p className="text-slate-500 text-sm mt-1 font-medium">
-             Quản lý thông tin website and cấu hình toán các.
+             Quản lý thông tin website and cấu hình.
           </p>
         </div>
         {recentlySuccessful && (
