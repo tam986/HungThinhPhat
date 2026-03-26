@@ -53,7 +53,8 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
             return {
                 success: false,
                 message: "Không thể kết nối đến máy chủ.",
-                data: [],
+                data: [], // Default for pagination.data
+                products: { data: [], current_page: 1, last_page: 1, total: 0 }, // For fetchProducts
                 bienthes: { data: [] },
                 productCate: [],
                 baivietMoi: [],
@@ -61,6 +62,8 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
                 product: null,
                 variants: [],
                 available_fillings: [],
+                // If the caller expects an array directly (like fetchCategories often would)
+                // but we return this object, we should handle it in the caller or here.
             } as any;
         }
 
@@ -100,8 +103,7 @@ export async function fetchNavTree() {
 /** Returns danhmucs[] – use HomeData instead where possible */
 export async function fetchCategories() {
     // ISR: categories change rarely
-    const data = await apiFetch("/danhmuc", { revalidate: 300 });
-    return data;
+    return apiFetch("/categories", { revalidate: 300 });
 }
 
 // ---------- Home ----------
