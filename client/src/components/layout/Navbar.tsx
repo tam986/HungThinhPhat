@@ -79,13 +79,13 @@ export function Navbar({ initialNavTree = [] }: { initialNavTree?: any[] }) {
                             </div>
 
                             <div className="grid grid-cols-2 gap-x-8 gap-y-8">
-                               {activeCategory.products && activeCategory.products.map((sp: any) => (
+                               {Array.isArray(activeCategory.products) && activeCategory.products.map((sp: any) => (
                                  <div key={sp.id} className="space-y-3">
                                    <h5 className="font-bold text-sm text-foreground hover:text-primary cursor-pointer transition-colors border-l-2 border-primary/20 pl-3">
                                       {sp.name}
                                    </h5>
                                    <div className="flex flex-col gap-2 pl-3">
-                                      {sp.types && sp.types.map((type: any) => (
+                                      {Array.isArray(sp.types) && sp.types.map((type: any) => (
                                         <Link 
                                           key={type.id} 
                                           href={`/products?category=${activeCategory.slug}&search=${encodeURIComponent(sp.name)}`}
