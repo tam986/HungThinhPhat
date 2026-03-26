@@ -8,18 +8,15 @@ import { CartButton } from "./CartButton";
 import { NavbarSearch } from "./NavbarSearch";
 import { useEffect, useState } from "react";
 
-export function Navbar() {
-  const [navTree, setNavTree] = useState<any[]>([]);
-  const [activeCategory, setActiveCategory] = useState<any>(null);
+export function Navbar({ initialNavTree = [] }: { initialNavTree?: any[] }) {
+  const [navTree, setNavTree] = useState<any[]>(Array.isArray(initialNavTree) ? initialNavTree : []);
+  const [activeCategory, setActiveCategory] = useState<any>(
+    Array.isArray(initialNavTree) && initialNavTree.length > 0 ? initialNavTree[0] : null
+  );
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    import("@/services/api").then(api => {
-        api.fetchNavTree().then(data => {
-            setNavTree(data);
-            if (data.length > 0) setActiveCategory(data[0]);
-        }).catch(console.error);
-    });
+    // We now receive navTree from Server Layout, avoiding CORS issues.
     
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);

@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { FloatingContact } from "@/components/layout/FloatingContact";
+import { fetchNavTree } from "@/services/api";
 import "./globals.css";
 
 const merriweather = Merriweather({
@@ -37,17 +38,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const navTreeRes = await fetchNavTree();
+  const navTree = Array.isArray(navTreeRes) ? navTreeRes : (navTreeRes?.data || []);
+
   return (
     <html lang="vi">
       <body
         className={`${merriweather.variable} ${dmSans.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <Navbar />
+        <Navbar initialNavTree={navTree} />
         {children}
         <Footer />
         <Toaster position="top-center" richColors />

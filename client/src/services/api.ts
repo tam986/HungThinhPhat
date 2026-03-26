@@ -26,10 +26,20 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
         ? { next: { revalidate } }
         : { cache: "no-store" };
 
-    const url = `${API_BASE_URL}${path}`;
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const url = `${API_BASE_URL}${cleanPath}`.replace(/\/+$/, "");
+
+    const headers = {
+        'Accept': 'application/json',
+        ...rest.headers,
+    };
 
     try {
-        const res = await fetch(url, { ...cacheOpt, ...rest });
+        const res = await fetch(url, {
+            ...cacheOpt,
+            ...rest,
+            headers
+        });
         if (!res.ok) {
             console.error(`API ${path} failed with status: ${res.status}`);
             throw new Error(`API ${path} failed: ${res.status}`);
@@ -39,7 +49,6 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
         console.error(`Fetch error for ${url}:`, err);
 
         // CRITICAL: Prevent server-side crash during SSR/ISR
-        // If we are in production and it's a server-side execution, return a safe fallback
         if (process.env.NODE_ENV === 'production') {
             return {
                 success: false,
@@ -51,7 +60,6 @@ async function apiFetch<T = any>(path: string, opts?: RequestInit & { revalidate
                 danhmucs: [],
                 product: null,
                 variants: [],
-                available_weights: [],
                 available_fillings: [],
             } as any;
         }
