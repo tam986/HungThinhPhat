@@ -97,7 +97,7 @@ export async function fetchSaleProducts() {
 
 /** Returns nav tree: Category > Product > Types */
 export async function fetchNavTree() {
-    return apiFetch("/nav-tree", { revalidate: 300 });
+    return apiFetch("/navigation-tree", { revalidate: 300 });
 }
 
 /** Returns danhmucs[] – use HomeData instead where possible */
