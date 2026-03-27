@@ -1,9 +1,13 @@
 // -- Base URL Configuration (Updated to trigger re-deploy) --
-const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-// Normalize: Ensure it ends with /api if it's pointing to the root domain
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+// Normalize: Ensure it ends with /api/v1 if it's pointing to the root domain or ends with /api
 let normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
-if (!normalizedBaseUrl.endsWith("/api") && !normalizedBaseUrl.includes("localhost") && !normalizedBaseUrl.includes("127.0.0.1")) {
-    normalizedBaseUrl = `${normalizedBaseUrl}/api`;
+if (!normalizedBaseUrl.endsWith("/api/v1") && !normalizedBaseUrl.includes("localhost") && !normalizedBaseUrl.includes("127.0.0.1")) {
+    if (normalizedBaseUrl.endsWith("/api")) {
+        normalizedBaseUrl = `${normalizedBaseUrl}/v1`;
+    } else {
+        normalizedBaseUrl = `${normalizedBaseUrl}/api/v1`;
+    }
 }
 export const API_BASE_URL = normalizedBaseUrl;
 
