@@ -191,8 +191,8 @@ Route::middleware(['auth.admin'])->group(function () {
         Route::get('/magiamgia/active/{id}', 'active')->name('magiamgia.active');
         Route::get('/magiamgia/unactive/{id}', 'unactive')->name('magiamgia.unactive');
         Route::get('/magiamgia/{id}/edit', 'edit')->name('magiamgia.edit');
-        Route::put('/{id}', 'update')->name('magiamgia.update');
-        Route::delete('/{id}', 'destroy')->name('magiamgia.destroy');
+        Route::put('/magiamgia/{id}', 'update')->name('magiamgia.update');
+        Route::delete('/magiamgia/{id}', 'destroy')->name('magiamgia.destroy');
     });
 
     Route::get('/api/sanpham/{id}/bienthe', function ($id) {
