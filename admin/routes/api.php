@@ -24,30 +24,32 @@ Route::get('/storage-link',function(){
   symlink($targetFolder, $linkFolder);
 });
 Route::controller(SearchController::class)->group(function () {
-    Route::get('/search', 'search')->name('nav.search');
+    // Route::get('/search', 'search')->name('nav.search');
 });
 Route::controller(HomeController::class)->group(function () {
     Route::get('/', 'index')->name('client.home');
 });
-Route::get('/check-login', function () {
-    return response()->json(['logged_in' => Auth::check()]);
-});
+
+// Route::get('/check-login', function () {
+//     return response()->json(['logged_in' => Auth::check()]);
+// });
+
 Route::controller(YeuThichController::class)->group(function () {
-    Route::post('/yeuthich/add', 'add')->name('yeuthich.add');
-    Route::post('/yeuthich/remove', 'remove')->name('yeuthich.remove');
-    Route::post('/yeuthich/sync', 'syncFavorites')->name('yeuthich.sync');
+    // Route::post('/yeuthich/add', 'add')->name('yeuthich.add');
+    // Route::post('/yeuthich/remove', 'remove')->name('yeuthich.remove');
+    // Route::post('/yeuthich/sync', 'syncFavorites')->name('yeuthich.sync');
 });
+
 Route::controller(SanphamController::class)->group(function () {
     Route::get('/sanpham', 'index')->name('sanpham.index');
+    Route::get('/sanpham/latest', 'latest')->name('api.sanpham.latest');
+    Route::get('/sanpham/sale', 'sale')->name('api.sanpham.sale');
     Route::get('/sanpham/{slug}', 'detail')->name('api.sanpham.detail');
-    Route::get('/sanpham/search', 'search')->name('sanpham.search');
-    Route::get('/sanpham/danhmuc/{id}', 'theodanhmuc')->name('sanpham.danhmuc');
-    Route::post('/update-view/{id}',  'updateLuotXem')->name('sanpham.updateView');
+    // Route::get('/sanpham/search', 'search')->name('sanpham.search');
+    // Route::get('/sanpham/danhmuc/{id}', 'theodanhmuc')->name('sanpham.danhmuc');
+    // Route::post('/update-view/{id}',  'updateLuotXem')->name('sanpham.updateView');
 });
-Route::controller(GiohangController::class)->group(function () {
-    Route::get('/cart', 'index')->name('cart.index');
-    Route::post('/addCart', 'store')->name('cart.add');
-});
+
 Route::controller(UserController::class)->group(function () {
     Route::get('/profile', 'index')->name('profile.profileUser')->middleware('auth.client');
     Route::put('/profile/updated', 'updateProfile')->name('profile.update')->middleware('auth.client');
@@ -60,39 +62,31 @@ Route::controller(UserController::class)->group(function () {
     Route::get('/profile/change-password',  'showChangePassVerify')->name('profile.showChangePassVerify');
     Route::put('/profile/submit-reset-password', [AuthController::class, 'submitResetPass'])->name('profile.submitResetPass');
 });
+
 Route::controller(AuthController::class)->group(function () {
-    // Login
-    Route::get('/login', 'loginForm')->name('login.form');
+    // Route::get('/login', 'loginForm')->name('login.form');
     Route::post('/login', 'login')->name('login.submit');
-    // Register
-    Route::get('/register', 'registerForm')->name('register.form');
+    // Route::get('/register', 'registerForm')->name('register.form');
     Route::post('/register', 'register');
-    Route::get('/verify', 'showVerifyForm')->name('verify.form');
+    // Route::get('/verify', 'showVerifyForm')->name('verify.form');
     Route::post('/verify', 'handleVerify');
     Route::post('/verify/resend',  'resendOtp')->name('verify.resend');
-    // Logout
     Route::post('/logout', 'logout')->name('logout');
 });
+
 Route::controller(BaivietController::class)->group(function () {
     Route::get('/baiviet', 'index')->name('baiviet.index');
-    Route::get('/baiviet/search', 'search')->name('baiviet.search');
-    Route::get('/baiviet/danhmuc/{id}', 'theoDanhMuc')->name('baiviet.danhmuc');
+    // Route::get('/baiviet/search', 'search')->name('baiviet.search');
+    // Route::get('/baiviet/danhmuc/{id}', 'theoDanhMuc')->name('baiviet.danhmuc');
     Route::get('/baiviet/{slug}', 'show')->name('baiviet.show');
 });
+
 Route::get('/lienhe', [LienHeController::class, 'index'])->name('lienhe.form');
 Route::post('/lienhe/send', [LienHeController::class, 'send'])->name('lienhe.send');
 
-Route::controller(BinhLuanController::class)->group(function () {
-    Route::post('/comments',  'store')->name('comments.store')->middleware('auth.client');
-});
-
-// Route::controller(CheckoutController::class)->group(function () {
-//     Route::get('/checkout', 'index')->name('checkout.index')->middleware('auth.client');
-//     Route::post('/checkout', 'store')->name('checkout.store')->middleware('auth.client');
-// });
 Route::controller(GiohangController::class)->group(function () {
-    Route::get('/cart', 'index')->name('cart.index');
-    Route::post('/addCart', 'store')->name('cart.add');
+    // Route::get('/cart', 'index')->name('cart.index');
+    // Route::post('/addCart', 'store')->name('cart.add');
     Route::put('/cart/update/{id_bienthe}', 'update')->name('cart.update');
     Route::delete('/cart/destroy/{id_bienthe}', 'destroy')->name('cart.destroy');
     Route::post('/cart/apply-coupon', 'applyCoupon')->name('cart.applyCoupon');
@@ -110,19 +104,17 @@ Route::controller(CheckoutController::class)->group(function () {
     Route::get('/checkout/vnPayCheck', 'vnPayCheck')->name('checkout.vnPayCheck');
     Route::get('/orders/{id}', 'show')->name('order.show');
 });
-Route::post('/binhluan/create', [BinhLuanController::class, 'store'])->name('binhluan.store');
 
 // Public API routes for Next.js Client
 Route::match(['get', 'post'], '/navigation-tree', [CategoryController::class, 'tree']);
 Route::match(['get', 'post'], '/categories', [CategoryController::class, 'index']);
 Route::get('/partners', [PartnerController::class, 'index']);
-Route::get('/partners', [PartnerController::class, 'index']);
 
-// Products API
-Route::get('/products', [SanphamController::class, 'index']);
-Route::get('/products/latest', [SanphamController::class, 'latest']);
-Route::get('/products/sale', [SanphamController::class, 'sale']);
-Route::get('/products/{slug}', [SanphamController::class, 'detail']); // ID here is the slug for detail.
+// Products API (Redirected to /sanpham equivalents in client)
+// Route::get('/products', [SanphamController::class, 'index']);
+// Route::get('/products/latest', [SanphamController::class, 'latest']);
+// Route::get('/products/sale', [SanphamController::class, 'sale']);
+// Route::get('/products/{slug}', [SanphamController::class, 'detail']);
 
 // Posts API
 Route::get('/posts', [BaivietController::class, 'index']);
