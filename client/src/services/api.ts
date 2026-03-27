@@ -1,4 +1,4 @@
-// -- Base URL Configuration --
+// -- Base URL Configuration (Updated to trigger re-deploy) --
 const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
 // Normalize: Ensure it ends with /api if it's pointing to the root domain
 let normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");

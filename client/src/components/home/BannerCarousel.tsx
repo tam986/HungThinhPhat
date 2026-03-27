@@ -30,7 +30,15 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
   const getImageUrl = (path: string) => {
     if (!path) return "/placeholder.jpg";
     if (path.startsWith("http")) return path;
-    return `${process.env.NEXT_PUBLIC_API_URL}/storage/${path}`;
+    
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    // Remove /api if present at the end of baseUrl
+    const storageBaseUrl = baseUrl.endsWith("/api")
+      ? baseUrl.replace(/\/api$/, "/storage")
+      : `${baseUrl}/storage`;
+    
+    const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    return `${storageBaseUrl}/${cleanPath}`;
   };
 
   if (!banners || banners.length === 0) {

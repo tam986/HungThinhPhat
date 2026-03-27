@@ -9,8 +9,7 @@ class BannerController extends Controller
 {
     public function getBanners()
     {
-        return response()->json(['message' => 'Hello Banners Debug']);
-        // $banners = Banner::where('anhien', 1)->orderBy('thutu', 'asc')->get();
-        // return response()->json($banners);
+        $banners = Banner::where('anhien', 1)->orderBy('thutu', 'asc')->get();
+        return response()->json($banners);
     }
 }

@@ -1,36 +1,5 @@
 <?php
 
-Route::group(['middleware' => 'api'], function() {
-    $apiPaths = [
-        'navigation-tree' => [\App\Http\Controllers\ApiController\CategoryController::class, 'tree', ['get', 'post']],
-        'categories' => [\App\Http\Controllers\ApiController\CategoryController::class, 'index', ['get', 'post']],
-        'partners' => [\App\Http\Controllers\ApiController\PartnerController::class, 'index', ['get']],
-        'sanpham' => [\App\Http\Controllers\ApiController\SanphamController::class, 'index', ['get']],
-        'sanpham/latest' => [\App\Http\Controllers\ApiController\SanphamController::class, 'latest', ['get']],
-        'sanpham/sale' => [\App\Http\Controllers\ApiController\SanphamController::class, 'sale', ['get']],
-        'sanpham/{slug}' => [\App\Http\Controllers\ApiController\SanphamController::class, 'detail', ['get']],
-        'baiviet' => [\App\Http\Controllers\ApiController\BaivietController::class, 'index', ['get']],
-        'baiviet/{slug}' => [\App\Http\Controllers\ApiController\BaivietController::class, 'show', ['get']],
-        'banners' => [\App\Http\Controllers\ApiController\BannerController::class, 'getBanners', ['get']],
-        'settings' => [\App\Http\Controllers\ApiController\SettingController::class, 'getSettings', ['get']],
-        'settings/bank' => [\App\Http\Controllers\ApiController\SettingController::class, 'getBankSettings', ['get']],
-        'vouchers' => [\App\Http\Controllers\ApiController\VoucherApiController::class, 'index', ['get']],
-        'checkout/process' => [\App\Http\Controllers\ApiController\CheckoutController::class, 'process', ['post']],
-        'checkout/upload' => [\App\Http\Controllers\ApiController\CheckoutController::class, 'uploadProof', ['post']],
-        'orders/{id}' => [\App\Http\Controllers\ApiController\CheckoutController::class, 'show', ['get']],
-        'cart/validate' => [\App\Http\Controllers\ApiController\GiohangController::class, 'validateCartStock', ['post']],
-    ];
-
-    foreach ($apiPaths as $path => $data) {
-        $controller = $data[0];
-        $method = $data[1];
-        $httpMethods = $data[2];
-        
-        Route::match($httpMethods, $path, [$controller, $method]);
-        Route::match($httpMethods, 'api/' . $path, [$controller, $method]);
-    }
-});
-
 use App\Http\Controllers\AdminDMController;
 use App\Http\Controllers\AdminSPController;
 use App\Http\Controllers\AdminUserController;
