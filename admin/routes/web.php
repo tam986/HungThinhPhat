@@ -1,5 +1,25 @@
 <?php
 
+Route::group(['prefix' => 'api', 'middleware' => 'api'], function() {
+    Route::match(['get', 'post'], 'navigation-tree', [\App\Http\Controllers\ApiController\CategoryController::class, 'tree']);
+    Route::match(['get', 'post'], 'categories', [\App\Http\Controllers\ApiController\CategoryController::class, 'index']);
+    Route::get('partners', [\App\Http\Controllers\ApiController\PartnerController::class, 'index']);
+    Route::get('sanpham', [\App\Http\Controllers\ApiController\SanphamController::class, 'index']);
+    Route::get('sanpham/latest', [\App\Http\Controllers\ApiController\SanphamController::class, 'latest']);
+    Route::get('sanpham/sale', [\App\Http\Controllers\ApiController\SanphamController::class, 'sale']);
+    Route::get('sanpham/{slug}', [\App\Http\Controllers\ApiController\SanphamController::class, 'detail']);
+    Route::get('baiviet', [\App\Http\Controllers\ApiController\BaivietController::class, 'index']);
+    Route::get('baiviet/{slug}', [\App\Http\Controllers\ApiController\BaivietController::class, 'show']);
+    Route::get('banners', [\App\Http\Controllers\ApiController\BannerController::class, 'getBanners']);
+    Route::get('settings', [\App\Http\Controllers\ApiController\SettingController::class, 'getSettings']);
+    Route::get('settings/bank', [\App\Http\Controllers\ApiController\SettingController::class, 'getBankSettings']);
+    Route::get('vouchers', [\App\Http\Controllers\ApiController\VoucherApiController::class, 'index']);
+    Route::post('checkout/process', [\App\Http\Controllers\ApiController\CheckoutController::class, 'process']);
+    Route::post('checkout/upload', [\App\Http\Controllers\ApiController\CheckoutController::class, 'uploadProof']);
+    Route::get('orders/{id}', [\App\Http\Controllers\ApiController\CheckoutController::class, 'show']);
+    Route::post('cart/validate', [\App\Http\Controllers\ApiController\GiohangController::class, 'validateCartStock']);
+});
+
 use App\Http\Controllers\AdminDMController;
 use App\Http\Controllers\AdminSPController;
 use App\Http\Controllers\AdminUserController;
